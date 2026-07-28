@@ -1,18 +1,63 @@
 #include <iostream>
+#include <string>
+#include <sstream>
 
-// TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
+using namespace std;
 
-int main() {
-    // TIP Press <shortcut actionId="RenameElement"/> when your caret is at the <b>lang</b> variable name to see how CLion can help you rename it.
-
-    const auto lang = "C++";
-    std::cout << "Hello and welcome to " << lang << "!\n";
-
-    for (int i = 1; i <= 5; i++) {
-        // TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
-        std::cout << "i = " << i << std::endl;
+string getCenteredString(const string& text, int width = 80)
+{
+    int padding = (width - static_cast<int>(text.length())) / 2;
+    if (padding > 0)
+    {
+        return string(padding, ' ') + text;
     }
+    return text;
+}
 
+
+void printCenteredBlock(const string& text, int width = 80)
+{
+    stringstream ss(text);
+    string line;
+
+    while (getline(ss, line))
+    {
+        cout << getCenteredString(line, width) << '\n';
+    }
+}
+
+int login()
+{
+    const string asciiArt = R"(
+ _____  ___    __     ____  ____  _______   __     __   ___  _______
+(\"   \|"  \  |" \   ("  _||_ " ||   _  "\ |" \   |/"| /  ")/"     "|
+|.\\   \    | ||  |  |   (  ) : |(. |_)  :)||  |  (: |/   /(: ______)
+|: \.   \\  | |:  |  (:  |  | . )|:     \/ |:  |  |    __/  \/    |
+|.  \    \. | |.  |   \\ \__/ // (|  _  \\ |.  |  (// _  \  // ___)_
+|    \    \ | /\  |\  /\\ __ //\ |: |_)  :)/\  |\ |: | \  \(:      "|
+ \___|\____\)(__\_|_)(__________)(_______/(__\_|_)(__|  \__)\_______)
+)";
+
+
+    printCenteredBlock(asciiArt, 165);
+
+    string usernameInput, pwdInput;
+
+    cout << endl << endl;
+    cout << getCenteredString("Username: ", 145);
+    cin >> usernameInput;
+
+    //database input here for username
+
+    cout << getCenteredString("Password: ", 145);
+    cin >> pwdInput;
+
+    //database input here for username
     return 0;
-    // TIP See CLion help at <a href="https://www.jetbrains.com/help/clion/">jetbrains.com/help/clion/</a>. Also, you can try interactive lessons for CLion by selecting 'Help | Learn IDE Features' from the main menu.
+}
+
+int main()
+{
+    login();
+    return 0;
 }
