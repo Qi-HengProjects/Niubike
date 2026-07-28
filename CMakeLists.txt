@@ -1,9 +1,11 @@
-cmake_minimum_required(VERSION 4.3)
+cmake_minimum_required(VERSION 3.20)
 project(Niubike)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(Niubike main.cpp
-        Structures.h
+add_executable(Niubike
+        main.cpp
+        DatabaseEngine.cpp
         DatabaseEngine.h
-        DatabaseEngine.cpp)
+        Structures.h
+)
