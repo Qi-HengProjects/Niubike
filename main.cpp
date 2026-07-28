@@ -1,18 +1,38 @@
 #include <iostream>
+#include "Structures.h"
+#include "DatabaseEngine.h"
 
-// TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
+using namespace std;
 
 int main() {
-    // TIP Press <shortcut actionId="RenameElement"/> when your caret is at the <b>lang</b> variable name to see how CLion can help you rename it.
+    DataManager dm;
 
-    const auto lang = "C++";
-    std::cout << "Hello and welcome to " << lang << "!\n";
+    cout << "=== Testing DatabaseEngine ===" << endl;
 
-    for (int i = 1; i <= 5; i++) {
-        // TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
-        std::cout << "i = " << i << std::endl;
+    // 1. Try loading existing text files
+    loadAllDatabases(dm);
+
+    cout << "Initial records loaded into RAM:" << endl;
+    cout << "  - Customers: " << dm.customers.size() << endl;
+    cout << "  - Bicycles:  " << dm.bicycles.size() << endl;
+    cout << "  - Rentals:   " << dm.rentals.size() << endl;
+
+    // 2. Add sample data if vectors are empty
+    if (dm.customers.empty()) {
+        Customer c1 = {"C101", "Tan Ah Kow", "010203-14-1234", "Paid", "No history"};
+        dm.customers.push_back(c1);
+        cout << "\nAdded test customer: " << c1.customer_name << endl;
     }
 
+    if (dm.bicycles.empty()) {
+        Bicycle b1 = {"B001", "Mountain", 15.50, "Available", "Good"};
+        dm.bicycles.push_back(b1);
+        cout << "Added test bicycle:  " << b1.bike_id << endl;
+    }
+
+    // 3. Save memory back out to disk
+    saveAllDatabases(dm);
+    cout << "\nData saved to disk successfully!" << endl;
+
     return 0;
-    // TIP See CLion help at <a href="https://www.jetbrains.com/help/clion/">jetbrains.com/help/clion/</a>. Also, you can try interactive lessons for CLion by selecting 'Help | Learn IDE Features' from the main menu.
 }
