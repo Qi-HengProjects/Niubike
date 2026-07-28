@@ -32,7 +32,7 @@ int login()
  _____  ___    __     ____  ____  _______   __     __   ___  _______
 (\"   \|"  \  |" \   ("  _||_ " ||   _  "\ |" \   |/"| /  ")/"     "|
 |.\\   \    | ||  |  |   (  ) : |(. |_)  :)||  |  (: |/   /(: ______)
-|: \.   \\  | |:  |  (:  |  | . )|:     \/ |:  |  |    __/  \/    |
+|: \.   \\  | |:  |  (:  |  | . )|:     \/ |:  |  |    __/  \/      |
 |.  \    \. | |.  |   \\ \__/ // (|  _  \\ |.  |  (// _  \  // ___)_
 |    \    \ | /\  |\  /\\ __ //\ |: |_)  :)/\  |\ |: | \  \(:      "|
  \___|\____\)(__\_|_)(__________)(_______/(__\_|_)(__|  \__)\_______)
@@ -41,9 +41,12 @@ int login()
 
     printCenteredBlock(asciiArt, 165);
 
-    string usernameInput, pwdInput;
+    const string wlcMsg = "Bicycle Rental Services";
+    cout << getCenteredString(wlcMsg, 165) << endl;
 
+    string usernameInput, pwdInput;
     cout << endl << endl;
+
     cout << getCenteredString("Username: ", 145);
     cin >> usernameInput;
 
