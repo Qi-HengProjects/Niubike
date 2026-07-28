@@ -18,18 +18,23 @@ void loadCustomers(vector<Customer> &customers) {
             continue;
         }
         stringstream ss(line);
-        string id, name, ic, hist, payStatus;
+        string id, name, ic, hist, payStatus, user, pwd;
         if (getline(ss, id, ',') &&
             getline(ss, name, ',') &&
             getline(ss, ic, ',') &&
             getline(ss, payStatus, ',')&&
-            getline(ss, hist, ',')) {
+            getline(ss, hist, ',') &&
+            getline(ss, user, ',') &&
+            getline(ss, pwd, ','))
+{
             Customer temp;
             temp.customer_id = id;
             temp.customer_name = name;
             temp.customer_ic = ic;
             temp.payStatus = payStatus;
             temp.history = hist;
+            temp.username = user;
+            temp.password = pwd;
 
             customers.push_back(temp);
             }

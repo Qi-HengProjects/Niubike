@@ -3,6 +3,7 @@
 # include <iostream>
 # include <string>
 # include <chrono>
+# include <vector>
 
 
 using namespace std;
@@ -30,6 +31,8 @@ struct Customer {
     string customer_ic;
     string payStatus;
     string history;
+    string username;
+    string password;
 };
 
 struct DataManager {
