@@ -28,9 +28,9 @@ void loadCustomers(vector<Customer> &customers) {
             getline(ss, pwd, ','))
 {
             Customer temp;
-            temp.customer_id = id;
-            temp.customer_name = name;
-            temp.customer_ic = ic;
+            temp.customerId = id;
+            temp.customerName = name;
+            temp.customerIc = ic;
             temp.payStatus = payStatus;
             temp.history = hist;
             temp.username = user;
@@ -61,8 +61,8 @@ void loadBicycles(vector<Bicycle> &bicycles) {
             getline(ss, status, ',') &&
             getline(ss, maintenance, ',')) {
             Bicycle temp;
-            temp.bike_id = id;
-            temp.bike_type = type;
+            temp.bikeId = id;
+            temp.bikeType = type;
             temp.price = stod(price);
             temp.status = status;
             temp.maintenance = maintenance;
@@ -93,11 +93,11 @@ void loadRentals(vector<Rental> &rentals) {
             getline(ss, renting_price, ',') &&
             getline(ss, deposit, ',')) {
             Rental temp;
-            temp.rental_id= id;
-            temp.rental_duration = duration;
-            temp.payment_status = payment_status;
-            temp.renting_status = renting_status;
-            temp.renting_price = stod(renting_price);
+            temp.rentalId= id;
+            temp.rentalDuration = duration;
+            temp.paymentStatus = payment_status;
+            temp.rentingStatus = renting_status;
+            temp.rentingPrice = stod(renting_price);
             temp.deposit = stod(deposit);
             rentals.push_back(temp);
             }
@@ -109,11 +109,13 @@ void saveCustomers(const vector<Customer> &customers) {
     ofstream file("customers.txt");
     if (file.is_open()) {
         for (const auto &c : customers) {
-            file << c.customer_id << ','
-            << c.customer_name << ','
-            << c.customer_ic << ','
+            file << c.customerId << ','
+            << c.customerName << ','
+            << c.customerIc << ','
             << c.payStatus << ','
-            << c.history
+            << c.history << ','
+            << c.username << ','
+            << c.password
             << endl;
         }
         file.close();
@@ -124,8 +126,8 @@ void saveBicycles(const vector<Bicycle> &bicycles) {
     ofstream file("bicycles.txt");
     if (file.is_open()) {
         for (const auto &b : bicycles) {
-            file <<  b.bike_id << ','
-            << b.bike_type << ','
+            file <<  b.bikeId << ','
+            << b.bikeType << ','
             << b.price << ','
             << b.status << ','
             << b.maintenance
@@ -139,11 +141,11 @@ void saveRentals(const vector<Rental> &rentals) {
     ofstream file("rentals.txt");
     if (file.is_open()) {
         for (const auto &r : rentals) {
-            file << r.rental_id << ','
-            << r.rental_duration << ','
-            << r.payment_status << ','
-            << r.renting_status << ','
-            << r.renting_price << ','
+            file << r.rentalId << ','
+            << r.rentalDuration << ','
+            << r.paymentStatus << ','
+            << r.rentingStatus << ','
+            << r.rentingPrice << ','
             << r.deposit
             << endl;
         }

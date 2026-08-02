@@ -5,30 +5,29 @@
 # include <chrono>
 # include <vector>
 
-
 using namespace std;
 
 struct Bicycle {
-    string bike_id;
-    string bike_type;
+    string bikeId;
+    string bikeType;
     double price;
     string status;
     string maintenance;
 };
 
 struct Rental {
-    string rental_id;
-    string rental_duration;
-    string payment_status;
-    string renting_status;
-    double renting_price;
+    string rentalId;
+    string rentalDuration;
+    string paymentStatus;
+    string rentingStatus;
+    double rentingPrice;
     double deposit;
 };
 
 struct Customer {
-    string customer_id;
-    string customer_name;
-    string customer_ic;
+    string customerId;
+    string customerName;
+    string customerIc;
     string payStatus;
     string history;
     string username;
