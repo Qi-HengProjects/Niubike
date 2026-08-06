@@ -13,7 +13,7 @@ int main()
     loadAllDatabases(dm);   // load customers.txt, bicycles.txt, rentals.txt into dm
 
     login(dm);
-    menu();
+    menu(dm);
 
     saveAllDatabases(dm);   // persist any changes before exiting
     return 0;

@@ -1,14 +1,13 @@
-//
-// Created by Jayden on 5/8/2026.
-//
+#ifndef RENTAL_H
+#define RENTAL_H
 
-#ifndef NIUBIKE_RENTAL_H
-#define NIUBIKE_RENTAL_H
+#include "Structures.h"
+#include <vector>
 
+// Displays bicycle menu & collects user choices
+std::vector<int> rentalMenu(DataManager &dm);
 
-class rental
-{
-};
+// Processes duration, updates bicycle & rental database, prints invoice
+void printInvoice(DataManager &dm, const std::vector<int> &selectedRent);
 
-
-#endif //NIUBIKE_RENTAL_H
+#endif

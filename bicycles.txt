@@ -1,1 +1,12 @@
-B001,Mountain,15.5,Available,Good
+B001,Regular,5,Rented,None
+B002,Regular,5,Rented,None
+B003,Regular,5,Rented,None
+B004,Two Seater,10,Rented,None
+B005,Two Seater,10,Available,None
+B006,E-Bike,12,Available,None
+B007,E-Bike,12,Unavailable,Under Maintenance
+B008,Kids Bike,4,Available,None
+B009,Kids Bike,4,Available,None
+B010,Kids Bike,4,Available,None
+B011,City Bike,7,Rented,None
+B012,City Bike,7,Available,None

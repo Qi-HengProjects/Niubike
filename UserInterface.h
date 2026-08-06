@@ -1,9 +1,9 @@
-#ifndef NIUBIKE_USERINTERFACE_H
-#define NIUBIKE_USERINTERFACE_H
+#ifndef USERINTERFACE_H
+#define USERINTERFACE_H
 
-#include "Structures.h"
+#include "DatabaseEngine.h"
 
 int login(DataManager &dm);
-void menu();
+void menu(DataManager &dm); 
 
-#endif //NIUBIKE_USERINTERFACE_H
+#endif

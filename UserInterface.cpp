@@ -7,10 +7,8 @@
 #include <limits>
 #include <algorithm>
 
-
 using namespace std;
 
-// Helper to prevent CSV corruption with the existing database functions
 static bool containsComma(const string &s) {
     return s.find(',') != string::npos;
 }
@@ -20,13 +18,13 @@ int login(DataManager &dm) {
         clearScreen();
 
         const string asciiArt = R"(
- _____   ___     __     ____  ____  _______   __     __   ___  _______
-(\"   \|"  \   |" \   ("  _||_ " ||   _  "\ |" \   |/"| /  ")/"     "|
-|.\\   \   | ||  |  |   (  ) : |(. |_)  :)||  |  (: |/   /(: ______)
-|: \.   \\  | |:  |  (:  |  | . )|:     \/ |:  |  |    __/  \/      |
-|.  \    \. | |.  |   \\ \__/ // (|  _  \\ |.  |  (// _  \  // ___)_
-|    \    \ | /\  |\  /\\ __ //\ |: |_)  :)/\  |\ |: | \  \(:      "|
- \___|\____\)(__\_|_)(__________)(_______/(__\_|_)(__|  \__)\_______)
+ _____  ___    __     ____  ____  _______    __     __   ___  _______ 
+(\"   \|"  \  |" \   ("  _||_ " ||   _  "\  |" \   |/"| /  ")/"     "|
+|.\\   \    | ||  |  |   (  ) : |(. |_)  :) ||  |  (: |/   /(: ______)
+|: \.   \\  | |:  |  (:  |  | . )|:     \/  |:  |  |    __/  \/      |
+|.  \    \. | |.  |   \\ \__/ // (|  _  \\  |.  |  (// _  \  // ___)_ 
+|    \    \ | /\  |\  /\\ __ //\ |: |_)  :) /\  |\ |: | \  \(:      "|
+ \___|\____\)(__\_|_)(__________)(_______/ (__\_|_)(__|  \__)\_______)
 )";
 
         printCenteredBlock(asciiArt, 165);
@@ -37,7 +35,6 @@ int login(DataManager &dm) {
         cout << getCenteredString("Option:   ", 165);
 
         int loginOpt;
-        // Validate numeric input for menu selection
         if (!(cin >> loginOpt)) {
             cin.clear();
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
@@ -58,12 +55,11 @@ int login(DataManager &dm) {
 )";
                 printCenteredBlock(loginInBox, 165);
 
-                // Flush remaining newline from cin >>
                 cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
-                cout << getCenteredString("Username: ", 170);
+                cout << getCenteredString("Username: ", 160);
                 getline(cin, loginUIn);
-                cout << getCenteredString("Password: ", 170);
+                cout << getCenteredString("Password: ", 160);
                 getline(cin, loginPwdIn);
 
                 if (loginUIn.empty() || loginPwdIn.empty()) {
@@ -75,7 +71,6 @@ int login(DataManager &dm) {
 
                 bool found = false;
                 for (const auto &c : dm.customers) {
-                    // Trimming potential '\r' from database string comparisons
                     string dbUser = c.username;
                     string dbPwd = c.password;
                     if (!dbUser.empty() && dbUser.back() == '\r') dbUser.pop_back();
@@ -87,7 +82,7 @@ int login(DataManager &dm) {
                             cout << "\nLogin successful. Welcome " << c.customerName << "!" << endl;
                             cout << "Press Enter to continue...";
                             cin.get();
-                            return 0; // Logged in
+                            return 0;
                         } else {
                             cout << "\nIncorrect password." << endl;
                         }
@@ -116,7 +111,6 @@ int login(DataManager &dm) {
 
                 cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
-                // --- 1. Validate Name ---
                 while (true) {
                     cout << getCenteredString("Name (as per IC): ", 170);
                     getline(cin, customerName);
@@ -129,7 +123,6 @@ int login(DataManager &dm) {
                     }
                 }
 
-                // --- 2. Validate IC Number ---
                 while (true) {
                     cout << getCenteredString("IC number: ", 170);
                     getline(cin, customerIc);
@@ -142,7 +135,6 @@ int login(DataManager &dm) {
                     }
                 }
 
-                // --- 3. Validate Username ---
                 while (true) {
                     cout << getCenteredString("Username: ", 170);
                     getline(cin, signupUIn);
@@ -167,12 +159,11 @@ int login(DataManager &dm) {
                         if (duplicate) {
                             cout << "Error: Username is already taken. Please pick another.\n";
                         } else {
-                            break; // Valid username
+                            break;
                         }
                     }
                 }
 
-                // --- 4. Validate Password ---
                 while (true) {
                     cout << getCenteredString("Password: ", 170);
                     getline(cin, signupPwdIn);
@@ -185,7 +176,6 @@ int login(DataManager &dm) {
                     }
                 }
 
-                // Create new Customer record
                 Customer newC;
                 newC.customerId = "C" + to_string(dm.customers.size() + 1);
                 newC.customerName = customerName;
@@ -195,7 +185,6 @@ int login(DataManager &dm) {
                 newC.username = signupUIn;
                 newC.password = signupPwdIn;
 
-                // Update in-memory vector and trigger existing save function
                 dm.customers.push_back(newC);
                 saveCustomers(dm.customers);
 
@@ -216,51 +205,66 @@ int login(DataManager &dm) {
     }
 }
 
-void menu() {
-    const string menuText = R"(
+// Updated menu to accept DataManager reference
+void menu(DataManager &dm)
+{
+    while (true) {
+        clearScreen();
+        const string menuText = R"(
     1. Rent       
     2. Top Up Time
     3. Return Bike
     4. Payment    
     5. History    
+    6. Exit       
     )";
 
-    printCenteredBlock(menuText, 165);
-    int menuOpt;
-    cout << getCenteredString("Option: ", 165);
+        printCenteredBlock(menuText, 165);
+        int menuOpt;
+        cout << getCenteredString("Option: ", 165);
 
-    if (!(cin >> menuOpt)) {
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        cout << "Invalid menu choice." << endl;
-    }
-    
-    
-    switch (menuOpt)
-    {
-        case 1:
-            {
-                clearScreen();
-                //call rental function
-                break;
-            }
-            
+        if (!(cin >> menuOpt)) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << "Invalid menu choice. Press Enter to continue...";
+            cin.get();
+            continue;
+        }
         
-        case 2:
+        switch (menuOpt)
+        {
+            case 1:
             {
+                // Pass DataManager instance to rentalMenu
+                vector<int> userRentals = rentalMenu(dm);
+                
+                if (!userRentals.empty()) {
+                    printInvoice(dm, userRentals);
+                }
+                break;
+            }   
+            case 2:
+            case 3:
+            case 4:
+            case 5:
+            {
+                cout << "\nFeature coming soon! Press Enter to continue...";
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                cin.get();
                 break;
             }
-        case 3:
+            case 6:
             {
+                cout << "\nLogging out...\n";
+                return;
+            }
+            default:
+            {
+                cout << "\nInvalid option. Press Enter to continue...";
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                cin.get();
                 break;
             }
-        case 4:
-            {
-                break;
-            }
-        case 5:
-            {
-                break;
-            }
-    
+        }
+    }
 }
