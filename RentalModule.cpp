@@ -1,4 +1,4 @@
-#include "rental.h"
+#include "RentalModule.h"
 #include "DatabaseEngine.h"
 #include "Helpers.h"
 #include <iostream>
@@ -138,7 +138,7 @@ vector<int> rentalMenu(DataManager &dm) {
 
 
 
-void printInvoice(DataManager &dm, const vector<int> &selectedRent) {
+void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int> &selectedRent) {
     if (selectedRent.empty()) {
         cout << "\nNo bicycles were selected. Returning to menu...\n";
         return;
@@ -200,7 +200,7 @@ void printInvoice(DataManager &dm, const vector<int> &selectedRent) {
     string divider = "-----------+--------------+------------------+----------+----------+-----------";
 
     cout << getCenteredString(border, 165) << endl;
-    cout << getCenteredString("OFFICIAL RENTAL INVOICE & RECEIPT", 165) << endl;
+    cout << getCenteredString("CART", 165) << endl;
     cout << getCenteredString(border, 165) << endl;
 
     // Header row
@@ -247,9 +247,25 @@ void printInvoice(DataManager &dm, const vector<int> &selectedRent) {
     cout << getCenteredString(ssGrand.str(), 165) << endl;
     cout << getCenteredString(border, 165) << endl << endl;
 
-    cout << getCenteredString("[+] Rental confirmed! Status updated in database.", 165) << endl;
+    cout << getCenteredString("[+] Rental confirmed! Status updated in database. Please make you payment at the payment page.", 165) << endl;
     cout << getCenteredString("Press Enter to return to main menu...", 165);
     
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    cin.get();
+
+    Rental newR;
+    newR.rentalId = "R" + to_string(dm.rentals.size() + 1);
+    newR.rentalDuration = to_string(hours) +  " hours";
+    newR.paymentStatus = "Pending";
+    newR.rentingStatus = "Active";
+    newR.rentingPrice  = subtotal;
+    newR.deposit = totalDeposit;
+    newR.custId = currentCustomer.customerId;
+    newR.bikeIdsStr = assignedBikeIds;
+
+    dm.rentals.push_back(newR);
+    saveRentals(dm.rentals);
+
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
     cin.get();
 }

@@ -1,6 +1,5 @@
 #ifndef NIUBIKE_STRUCTURES_H
 #define NIUBIKE_STRUCTURES_H
-# include <iostream>
 # include <string>
 # include <chrono>
 # include <vector>
@@ -22,6 +21,8 @@ struct Rental {
     string rentingStatus;
     double rentingPrice;
     double deposit;
+    string custId;
+    vector<string> bikeIdsStr;
 };
 
 struct Customer {
@@ -29,9 +30,10 @@ struct Customer {
     string customerName;
     string customerIc;
     string payStatus;
-    string history;
+    string customers;
     string username;
     string password;
+    string isMember;
 };
 
 struct DataManager {

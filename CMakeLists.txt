@@ -8,10 +8,14 @@ add_executable(Niubike
         DatabaseEngine.cpp
         DatabaseEngine.h
         Structures.h
-        UserInterface.h
-        UserInterface.cpp
+        MainMenu.h
+        MainMenu.cpp
         Helpers.h
         Helpers.cpp
-        rental.cpp
-        rental.h
+        RentalModule.h
+        RentalModule.cpp
+        PaymentModule.h
+        PaymentModule.cpp
+        ReturnModule.h
+        ReturnModule.cpp
 )

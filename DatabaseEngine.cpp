@@ -18,15 +18,15 @@ void loadCustomers(vector<Customer> &customers) {
             continue;
         }
         stringstream ss(line);
-        string id, name, ic, hist, payStatus, user, pwd;
+        string id, name, ic, hist, payStatus, user, pwd, isMember;
         if (getline(ss, id, ',') &&
             getline(ss, name, ',') &&
             getline(ss, ic, ',') &&
             getline(ss, payStatus, ',')&&
             getline(ss, hist, ',') &&
             getline(ss, user, ',') &&
-            getline(ss, pwd, ','))
-{
+            getline(ss, pwd, ',') &&
+            getline(ss, isMember, ',')){
             Customer temp;
             temp.customerId = id;
             temp.customerName = name;
@@ -35,6 +35,7 @@ void loadCustomers(vector<Customer> &customers) {
             temp.history = hist;
             temp.username = user;
             temp.password = pwd;
+            temp.isMember = isMember;
 
             customers.push_back(temp);
             }
@@ -85,20 +86,35 @@ void loadRentals(vector<Rental> &rentals) {
             continue;
         }
         stringstream ss(line);
-        string id, duration, payment_status, renting_status, renting_price, deposit;
+        string id, duration, payment_status, renting_status, renting_price, deposit, custId, bikeIdsStr;
         if (getline(ss, id, ',') &&
             getline(ss, duration, ',') &&
             getline(ss, payment_status, ',') &&
             getline(ss, renting_status, ',') &&
             getline(ss, renting_price, ',') &&
-            getline(ss, deposit, ',')) {
+            getline(ss, deposit, ',') &&
+            getline(ss, custId, ',') &&
+            getline(ss, bikeIdsStr, ',')) {
             Rental temp;
             temp.rentalId= id;
+            temp.rentingStatus = renting_status;
             temp.rentalDuration = duration;
             temp.paymentStatus = payment_status;
-            temp.rentingStatus = renting_status;
             temp.rentingPrice = stod(renting_price);
             temp.deposit = stod(deposit);
+            temp.custId = custId;
+
+            stringstream bikeSS(bikeIdsStr);
+            string singleBikeId;
+
+            // Order MUST be: (1) Stream, (2) String variable, (3) Char delimiter
+            while (getline(bikeSS, singleBikeId, ';')) {
+                if (!singleBikeId.empty()) {
+                    if (singleBikeId.back() == '\r') singleBikeId.pop_back();
+                    temp.bikeIdsStr.push_back(singleBikeId);
+                }
+            }
+
             rentals.push_back(temp);
             }
     }
@@ -115,7 +131,8 @@ void saveCustomers(const vector<Customer> &customers) {
             << c.payStatus << ','
             << c.history << ','
             << c.username << ','
-            << c.password
+            << c.password << ','
+            << c.isMember
             << endl;
         }
         file.close();
@@ -142,12 +159,22 @@ void saveRentals(const vector<Rental> &rentals) {
     if (file.is_open()) {
         for (const auto &r : rentals) {
             file << r.rentalId << ','
-            << r.rentalDuration << ','
-            << r.paymentStatus << ','
-            << r.rentingStatus << ','
-            << r.rentingPrice << ','
-            << r.deposit
-            << endl;
+                 << r.rentalDuration << ','
+                 << r.paymentStatus << ','
+                 << r.rentingStatus << ','
+                 << r.rentingPrice << ','
+                 << r.deposit << ','
+                 << r.custId << ',';
+
+            // Join vector<string> bikeIds using ';' as a sub-delimiter
+            for (size_t i = 0; i < r.bikeIdsStr.size(); ++i) {
+                file << r.bikeIdsStr[i];
+                if (i + 1 < r.bikeIdsStr.size()) {
+                    file << ';';
+                }
+            }
+
+            file << endl; // Ended line without a trailing comma
         }
         file.close();
     }

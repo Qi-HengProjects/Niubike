@@ -1,7 +1,7 @@
-#include "UserInterface.h"
+#include "MainMenu.h"
 #include "DatabaseEngine.h"
 #include "Helpers.h"
-#include "rental.h"
+#include "RentalModule.h"
 #include <iostream>
 #include <sstream>
 #include <limits>
@@ -13,16 +13,16 @@ static bool containsComma(const string &s) {
     return s.find(',') != string::npos;
 }
 
-int login(DataManager &dm) {
+int login(DataManager &dm, Customer &currentCustomer) {
     while (true) {
         clearScreen();
 
         const string asciiArt = R"(
- _____  ___    __     ____  ____  _______    __     __   ___  _______ 
+ _____  ___    __     ____  ____  _______    __     __   ___  _______
 (\"   \|"  \  |" \   ("  _||_ " ||   _  "\  |" \   |/"| /  ")/"     "|
 |.\\   \    | ||  |  |   (  ) : |(. |_)  :) ||  |  (: |/   /(: ______)
 |: \.   \\  | |:  |  (:  |  | . )|:     \/  |:  |  |    __/  \/      |
-|.  \    \. | |.  |   \\ \__/ // (|  _  \\  |.  |  (// _  \  // ___)_ 
+|.  \    \. | |.  |   \\ \__/ // (|  _  \\  |.  |  (// _  \  // ___)_
 |    \    \ | /\  |\  /\\ __ //\ |: |_)  :) /\  |\ |: | \  \(:      "|
  \___|\____\)(__\_|_)(__________)(_______/ (__\_|_)(__|  \__)\_______)
 )";
@@ -206,17 +206,17 @@ int login(DataManager &dm) {
 }
 
 // Updated menu to accept DataManager reference
-void menu(DataManager &dm)
+void menu(DataManager &dm, const Customer &currentCustomer)
 {
     while (true) {
         clearScreen();
         const string menuText = R"(
-    1. Rent       
+    1. Rent
     2. Top Up Time
     3. Return Bike
-    4. Payment    
-    5. History    
-    6. Exit       
+    4. Payment
+    5. History
+    6. Exit
     )";
 
         printCenteredBlock(menuText, 165);
@@ -230,19 +230,19 @@ void menu(DataManager &dm)
             cin.get();
             continue;
         }
-        
+
         switch (menuOpt)
         {
             case 1:
             {
                 // Pass DataManager instance to rentalMenu
                 vector<int> userRentals = rentalMenu(dm);
-                
+
                 if (!userRentals.empty()) {
-                    printInvoice(dm, userRentals);
+                    checkOut(dm, currentCustomer, userRentals);
                 }
                 break;
-            }   
+            }
             case 2:
             case 3:
             case 4:

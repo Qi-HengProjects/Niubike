@@ -1,13 +1,15 @@
 #ifndef RENTAL_H
 #define RENTAL_H
 
+#include "databaseEngine.h"
 #include "Structures.h"
 #include <vector>
+using namespace std;
 
 // Displays bicycle menu & collects user choices
-std::vector<int> rentalMenu(DataManager &dm);
+vector<int> rentalMenu(DataManager &dm);
 
 // Processes duration, updates bicycle & rental database, prints invoice
-void printInvoice(DataManager &dm, const std::vector<int> &selectedRent);
+void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int> &selectedRent);
 
 #endif
