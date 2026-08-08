@@ -33,6 +33,7 @@ struct Customer {
     string customers;
     string username;
     string password;
+    string history;
     string isMember;
 };
 

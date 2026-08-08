@@ -18,4 +18,6 @@ add_executable(Niubike
         PaymentModule.cpp
         ReturnModule.h
         ReturnModule.cpp
+        History.cpp
+        History.h
 )

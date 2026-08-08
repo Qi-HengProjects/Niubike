@@ -1,6 +1,7 @@
 #include "MainMenu.h"
 #include "DatabaseEngine.h"
 #include "Helpers.h"
+#include "History.h"
 #include "RentalModule.h"
 #include <iostream>
 #include <sstream>
@@ -8,6 +9,14 @@
 #include <algorithm>
 
 using namespace std;
+
+// Helper function to trim all whitespace, \r, and \n
+static string trim(const string &s) {
+    size_t first = s.find_first_not_of(" \t\r\n");
+    if (first == string::npos) return "";
+    size_t last = s.find_last_not_of(" \t\r\n");
+    return s.substr(first, (last - first + 1));
+}
 
 static bool containsComma(const string &s) {
     return s.find(',') != string::npos;
@@ -18,11 +27,11 @@ int login(DataManager &dm, Customer &currentCustomer) {
         clearScreen();
 
         const string asciiArt = R"(
- _____  ___    __     ____  ____  _______    __     __   ___  _______
+ _____  ___    __     ____  ____  _______    __     __   ___  _______ 
 (\"   \|"  \  |" \   ("  _||_ " ||   _  "\  |" \   |/"| /  ")/"     "|
 |.\\   \    | ||  |  |   (  ) : |(. |_)  :) ||  |  (: |/   /(: ______)
 |: \.   \\  | |:  |  (:  |  | . )|:     \/  |:  |  |    __/  \/      |
-|.  \    \. | |.  |   \\ \__/ // (|  _  \\  |.  |  (// _  \  // ___)_
+|.  \    \. | |.  |   \\ \__/ // (|  _  \\  |.  |  (// _  \  // ____)_ 
 |    \    \ | /\  |\  /\\ __ //\ |: |_)  :) /\  |\ |: | \  \(:      "|
  \___|\____\)(__\_|_)(__________)(_______/ (__\_|_)(__|  \__)\_______)
 )";
@@ -44,6 +53,9 @@ int login(DataManager &dm, Customer &currentCustomer) {
             continue;
         }
 
+        // Clean newline buffer immediately after integer input
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
         switch (loginOpt) {
             case 1: {
                 string loginUIn, loginPwdIn;
@@ -55,14 +67,16 @@ int login(DataManager &dm, Customer &currentCustomer) {
 )";
                 printCenteredBlock(loginInBox, 165);
 
-                cin.ignore(numeric_limits<streamsize>::max(), '\n');
-
                 cout << getCenteredString("Username: ", 160);
                 getline(cin, loginUIn);
                 cout << getCenteredString("Password: ", 160);
                 getline(cin, loginPwdIn);
 
-                if (loginUIn.empty() || loginPwdIn.empty()) {
+                // Trim user input to prevent trailing space mismatches
+                string cleanUIn = trim(loginUIn);
+                string cleanPwdIn = trim(loginPwdIn);
+
+                if (cleanUIn.empty() || cleanPwdIn.empty()) {
                     cout << "\nUsername and Password cannot be empty." << endl;
                     cout << "Press Enter to continue...";
                     cin.get();
@@ -71,14 +85,14 @@ int login(DataManager &dm, Customer &currentCustomer) {
 
                 bool found = false;
                 for (const auto &c : dm.customers) {
-                    string dbUser = c.username;
-                    string dbPwd = c.password;
-                    if (!dbUser.empty() && dbUser.back() == '\r') dbUser.pop_back();
-                    if (!dbPwd.empty() && dbPwd.back() == '\r') dbPwd.pop_back();
+                    // Fully trim database values
+                    string dbUser = trim(c.username);
+                    string dbPwd  = trim(c.password);
 
-                    if (dbUser == loginUIn) {
+                    if (dbUser == cleanUIn) {
                         found = true;
-                        if (dbPwd == loginPwdIn) {
+                        if (dbPwd == cleanPwdIn) {
+                            currentCustomer = c; // Save logged-in customer
                             cout << "\nLogin successful. Welcome " << c.customerName << "!" << endl;
                             cout << "Press Enter to continue...";
                             cin.get();
@@ -109,11 +123,10 @@ int login(DataManager &dm, Customer &currentCustomer) {
 )";
                 printCenteredBlock(signupInBox, 165);
 
-                cin.ignore(numeric_limits<streamsize>::max(), '\n');
-
                 while (true) {
                     cout << getCenteredString("Name (as per IC): ", 170);
                     getline(cin, customerName);
+                    customerName = trim(customerName);
                     if (customerName.empty()) {
                         cout << "Error: Name cannot be empty.\n";
                     } else if (containsComma(customerName)) {
@@ -126,6 +139,7 @@ int login(DataManager &dm, Customer &currentCustomer) {
                 while (true) {
                     cout << getCenteredString("IC number: ", 170);
                     getline(cin, customerIc);
+                    customerIc = trim(customerIc);
                     if (customerIc.empty()) {
                         cout << "Error: IC cannot be empty.\n";
                     } else if (containsComma(customerIc)) {
@@ -138,6 +152,7 @@ int login(DataManager &dm, Customer &currentCustomer) {
                 while (true) {
                     cout << getCenteredString("Username: ", 170);
                     getline(cin, signupUIn);
+                    signupUIn = trim(signupUIn);
 
                     if (signupUIn.empty()) {
                         cout << "Error: Username cannot be empty.\n";
@@ -148,10 +163,7 @@ int login(DataManager &dm, Customer &currentCustomer) {
                     } else {
                         bool duplicate = false;
                         for (const auto &c : dm.customers) {
-                            string dbUser = c.username;
-                            if (!dbUser.empty() && dbUser.back() == '\r') dbUser.pop_back();
-
-                            if (dbUser == signupUIn) {
+                            if (trim(c.username) == signupUIn) {
                                 duplicate = true;
                                 break;
                             }
@@ -167,6 +179,7 @@ int login(DataManager &dm, Customer &currentCustomer) {
                 while (true) {
                     cout << getCenteredString("Password: ", 170);
                     getline(cin, signupPwdIn);
+                    signupPwdIn = trim(signupPwdIn);
                     if (signupPwdIn.length() < 4) {
                         cout << "Error: Password must be at least 4 characters long.\n";
                     } else if (containsComma(signupPwdIn)) {
@@ -184,9 +197,12 @@ int login(DataManager &dm, Customer &currentCustomer) {
                 newC.history = "New account created";
                 newC.username = signupUIn;
                 newC.password = signupPwdIn;
+                newC.isMember = false; //placeholder for now
 
                 dm.customers.push_back(newC);
                 saveCustomers(dm.customers);
+
+                currentCustomer = newC; // Save new customer data!
 
                 cout << "\nSign up successful! Your account has been registered." << endl;
                 cout << "Press Enter to continue...";
@@ -197,7 +213,6 @@ int login(DataManager &dm, Customer &currentCustomer) {
             default: {
                 cout << "\nInvalid option. Please choose 1 or 2." << endl;
                 cout << "Press Enter to continue...";
-                cin.ignore(numeric_limits<streamsize>::max(), '\n');
                 cin.get();
                 continue;
             }
@@ -205,7 +220,6 @@ int login(DataManager &dm, Customer &currentCustomer) {
     }
 }
 
-// Updated menu to accept DataManager reference
 void menu(DataManager &dm, const Customer &currentCustomer)
 {
     while (true) {
@@ -235,7 +249,6 @@ void menu(DataManager &dm, const Customer &currentCustomer)
         {
             case 1:
             {
-                // Pass DataManager instance to rentalMenu
                 vector<int> userRentals = rentalMenu(dm);
 
                 if (!userRentals.empty()) {
@@ -246,11 +259,16 @@ void menu(DataManager &dm, const Customer &currentCustomer)
             case 2:
             case 3:
             case 4:
-            case 5:
             {
                 cout << "\nFeature coming soon! Press Enter to continue...";
                 cin.ignore(numeric_limits<streamsize>::max(), '\n');
                 cin.get();
+                break;
+            }
+            case 5:
+            {
+                History history;
+                history.displayUserHistory(dm, currentCustomer.customerId);
                 break;
             }
             case 6:
