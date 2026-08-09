@@ -3,8 +3,9 @@
 #include "Helpers.h"
 #include "History.h"
 #include "RentalModule.h"
+#include "PaymentModule.h"
+#include "ReturnModule.h"
 #include <iostream>
-#include <sstream>
 #include <limits>
 #include <algorithm>
 
@@ -194,10 +195,9 @@ int login(DataManager &dm, Customer &currentCustomer) {
                 newC.customerName = customerName;
                 newC.customerIc = customerIc;
                 newC.payStatus = "None";
-                newC.history = "New account created";
                 newC.username = signupUIn;
                 newC.password = signupPwdIn;
-                newC.isMember = false; //placeholder for now
+                newC.isMember = "False"; //placeholder for now11
 
                 dm.customers.push_back(newC);
                 saveCustomers(dm.customers);
@@ -257,32 +257,25 @@ void menu(DataManager &dm, const Customer &currentCustomer)
                 break;
             }
             case 2:
+                break;
             case 3:
+                returnBikeLogic(dm, currentCustomer);
+                break;
             case 4:
-            {
-                cout << "\nFeature coming soon! Press Enter to continue...";
-                cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                cin.get();
+               processPayment(dm, currentCustomer);
                 break;
-            }
             case 5:
-            {
-                History history;
-                history.displayUserHistory(dm, currentCustomer.customerId);
+                // Call procedural function directly
+                displayUserHistory(dm, currentCustomer.customerId);
                 break;
-            }
             case 6:
-            {
                 cout << "\nLogging out...\n";
-                return;
-            }
+                break;
             default:
-            {
                 cout << "\nInvalid option. Press Enter to continue...";
                 cin.ignore(numeric_limits<streamsize>::max(), '\n');
                 cin.get();
                 break;
-            }
         }
     }
 }

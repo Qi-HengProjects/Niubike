@@ -23,7 +23,6 @@ void loadCustomers(vector<Customer> &customers) {
             getline(ss, name, ',') &&
             getline(ss, ic, ',') &&
             getline(ss, payStatus, ',')&&
-            getline(ss, hist, ',') &&
             getline(ss, user, ',') &&
             getline(ss, pwd, ',') &&
             getline(ss, isMember, ',')){
@@ -32,7 +31,6 @@ void loadCustomers(vector<Customer> &customers) {
             temp.customerName = name;
             temp.customerIc = ic;
             temp.payStatus = payStatus;
-            temp.history = hist;
             temp.username = user;
             temp.password = pwd;
             temp.isMember = isMember;
@@ -129,7 +127,6 @@ void saveCustomers(const vector<Customer> &customers) {
             << c.customerName << ','
             << c.customerIc << ','
             << c.payStatus << ','
-            << c.history << ','
             << c.username << ','
             << c.password << ','
             << c.isMember

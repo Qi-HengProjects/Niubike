@@ -136,8 +136,6 @@ vector<int> rentalMenu(DataManager &dm) {
     
 }
 
-
-
 void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int> &selectedRent) {
     if (selectedRent.empty()) {
         cout << "\nNo bicycles were selected. Returning to menu...\n";

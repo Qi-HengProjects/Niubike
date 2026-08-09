@@ -1,8 +1,11 @@
-//
-// Created by Foo Qi Heng on 7/8/2026.
-//
+#ifndef RETURNMODULE_H
+#define RETURNMODULE_H
+#include "RentalModule.h"
+#include "DatabaseEngine.h"
+#include "Helpers.h"
+#include "MainMenu.h"
+#include "DatabaseEngine.h"
+void returnBikeLogic();
 
-#ifndef NIUBIKE_RETURNMODULE_H
-#define NIUBIKE_RETURNMODULE_H
-
-#endif //NIUBIKE_RETURNMODULE_H
+void returnBikeLogic(DataManager &dm, const Customer &currentCustomer);
+#endif // RETURNMODULE_H

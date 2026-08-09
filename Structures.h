@@ -30,10 +30,8 @@ struct Customer {
     string customerName;
     string customerIc;
     string payStatus;
-    string customers;
     string username;
     string password;
-    string history;
     string isMember;
 };
 
