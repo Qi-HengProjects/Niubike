@@ -165,8 +165,8 @@ int login(DataManager &dm, Customer &currentCustomer) {
                     customerIc = trim(customerIc);
                     if (customerIc.empty()) {
                         cout << "Error: IC cannot be empty.\n";
-                    } else if (containsComma(customerIc)) {
-                        cout << "Error: IC cannot contain commas.\n";
+                    } else if (!std::all_of(customerIc.begin(), customerIc.end(), ::isdigit)) {
+                        cout << "Error: IC should only contain digits.\n";
                     } else {
                         break;
                     }
@@ -247,12 +247,12 @@ void menu(DataManager &dm, const Customer &currentCustomer)
     while (true) {
         clearScreen();
         const string menuText = R"(
-    1. Rent
+    1. Rent       
     2. Top Up Time
     3. Return Bike
-    4. Payment
-    5. History
-    6. Exit
+    4. Payment    
+    5. History    
+    6. Exit       
     )";
 
         printCenteredBlock(menuText, 165);
