@@ -24,6 +24,9 @@ int main() {
             menu(dm, currentCustomer);
         } else if (result == 1) {
             admin(dm);
+        } else {
+            // Option to exit program entirely from login screen
+            break; 
         }
     }
     
