@@ -5,6 +5,7 @@
 #include "RentalModule.h"
 #include "PaymentModule.h"
 #include "ReturnModule.h"
+#include "Admin.h"
 #include <iostream>
 #include <limits>
 #include <algorithm>
@@ -71,7 +72,7 @@ int login(DataManager &dm, Customer &currentCustomer) {
                 cout << getCenteredString("Username: ", 160);
                 getline(cin, loginUIn);
                 cout << getCenteredString("Password: ", 160);
-                getline(cin, loginPwdIn);
+                 getline(cin, loginPwdIn);
 
                 // Trim user input to prevent trailing space mismatches
                 string cleanUIn = trim(loginUIn);
@@ -84,6 +85,27 @@ int login(DataManager &dm, Customer &currentCustomer) {
                     continue;
                 }
 
+                string adminU = "NiuB";
+                string adminPwd = "yrugay";
+
+                // 1. CHECK ADMIN FIRST
+                if (cleanUIn == adminU) {
+                    if (cleanPwdIn == adminPwd) {
+                        cout << "\nAdmin login successful. Welcome NiuB!" << endl;
+                        cout << "Press Enter to continue...";
+                        cin.get();
+            
+                        //call admin();
+                        return 1; // Exit login after admin session ends
+                    } else {
+                        cout << "\nIncorrect password." << endl;
+                        cout << "Press Enter to continue...";
+                        cin.get();
+                        continue;
+                    }
+                }
+
+                // 2. CHECK CUSTOMERS LOOP (Only runs if NOT Admin)
                 bool found = false;
                 for (const auto &c : dm.customers) {
                     // Fully trim database values
@@ -262,10 +284,9 @@ void menu(DataManager &dm, const Customer &currentCustomer)
                 returnBikeLogic(dm, currentCustomer);
                 break;
             case 4:
-               processPayment(dm, currentCustomer);
+                processPayment(dm, currentCustomer);
                 break;
             case 5:
-                // Call procedural function directly
                 displayUserHistory(dm, currentCustomer.customerId);
                 break;
             case 6:

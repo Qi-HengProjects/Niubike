@@ -20,4 +20,6 @@ add_executable(Niubike
         ReturnModule.cpp
         History.cpp
         History.h
+        Admin.cpp
+        Admin.h
 )

@@ -1,5 +1,6 @@
 #include "DatabaseEngine.h"
 #include "MainMenu.h"
+#include "Admin.h"
 #include <iostream>
 
 using namespace std;
@@ -16,12 +17,17 @@ int main() {
 
     // 4. Main application loop
     // login() returns 0 when authentication or sign-up succeeds
-    while (login(dm, currentCustomer) == 0) {
-        // Launch main menu for the active customer
-        menu(dm, currentCustomer);
-
-        // Loop returns here when user selects Option 6 (Logout) in menu()
+    
+    while (true) {
+        int result = login(dm, currentCustomer);
+        if (result == 0) {
+            menu(dm, currentCustomer);
+        } else if (result == 1) {
+            admin(dm);
+        }
     }
+    
+    
 
     // 5. Save all data back to text files before exiting the program
     saveAllDatabases(dm);
