@@ -40,6 +40,7 @@ void admin(DataManager &dm)
         cout << getCenteredString("3. Bike Maintenance", 165) << endl;
         cout << getCenteredString("4. Rental Log      ", 165) << endl;
         cout << getCenteredString("5. Inventory       ", 165) << endl;
+        cout << getCenteredString("6. Exit            ", 165) << endl;
         cout << getCenteredString("Option:   ", 165);
 
         int adminOpt;
@@ -324,6 +325,11 @@ void admin(DataManager &dm)
                 getline(cin, dummy);
                 break;
             }
+            case 6: {
+                clearScreen();
+                break;
+            }
+            
             default: {
                 cout << "\nInvalid option!" << endl;
                 cout << "Press Enter to continue...";
