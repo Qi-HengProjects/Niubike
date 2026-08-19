@@ -1,6 +1,6 @@
 B001,Regular,5,Rented,None
-B002,Regular,5,Available,None
-B003,Regular,5,Available,None
+B002,Regular,5,Rented,None
+B003,Regular,5,Rented,None
 B004,Two Seater,10,Available,None
 B005,Two Seater,10,Rented,None
 B006,E-Bike,12,Rented,None

@@ -43,6 +43,7 @@ int login(DataManager &dm, Customer &currentCustomer) {
 
         cout << getCenteredString("1. Log In ", 165) << endl;
         cout << getCenteredString("2. Sign Up", 165) << endl;
+        cout << getCenteredString("3. Exit   ", 165) << endl;
         cout << getCenteredString("Option:   ", 165);
 
         int loginOpt;
@@ -232,8 +233,15 @@ int login(DataManager &dm, Customer &currentCustomer) {
                 return 0;
             }
 
+            case 3: {
+                cout << "\nExiting program..." << endl;
+                cout << "Press Enter to continue...";
+                cin.get();
+                return 2; // any value other than 0 or 1 -> main.cpp breaks its loop
+            }
+
             default: {
-                cout << "\nInvalid option. Please choose 1 or 2." << endl;
+                cout << "\nInvalid option. Please choose 1, 2, or 3." << endl;
                 cout << "Press Enter to continue...";
                 cin.get();
                 continue;
@@ -291,7 +299,10 @@ void menu(DataManager &dm, const Customer &currentCustomer)
                 break;
             case 6:
                 cout << "\nLogging out...\n";
-                break;
+                cout << "Press Enter to continue...";
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                cin.get();
+                return; // exit menu() entirely -> back to login screen in main.cpp
             default:
                 cout << "\nInvalid option. Press Enter to continue...";
                 cin.ignore(numeric_limits<streamsize>::max(), '\n');

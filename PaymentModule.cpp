@@ -15,21 +15,21 @@ int showPaymentGatewayUI(double grandTotal) {
 
     string border = "============================================";
 
-    cout << getCenteredString(border, 80) << endl;
-    cout << getCenteredString("PAYMENT GATEWAY", 80) << endl;
-    cout << getCenteredString(border, 80) << endl << endl;
+    cout << getCenteredString(border, 165) << endl;
+    cout << getCenteredString("PAYMENT GATEWAY", 165) << endl;
+    cout << getCenteredString(border, 165) << endl << endl;
 
     ostringstream ssAmount;
     ssAmount << "Amount Payable: $" << fixed << setprecision(2) << grandTotal;
     cout << getCenteredString(ssAmount.str(), 80) << endl << endl;
 
-    cout << getCenteredString("Select Payment Method:", 80) << endl;
-    cout << getCenteredString("1. Cash", 80) << endl;
-    cout << getCenteredString("2. Touch 'n Go eWallet", 80) << endl;
-    cout << getCenteredString("3. Credit / Debit Card", 80) << endl;
-    cout << getCenteredString("0. Cancel Payment", 80) << endl << endl;
+    cout << getCenteredString("Select Payment Method:", 165) << endl;
+    cout << getCenteredString("1. Cash               ", 165) << endl;
+    cout << getCenteredString("2. Touch 'n Go eWallet", 165) << endl;
+    cout << getCenteredString("3. Credit / Debit Card", 165) << endl;
+    cout << getCenteredString("0. Cancel Payment     ", 165) << endl << endl;
 
-    cout << getCenteredString("Option: ", 80);
+    cout << getCenteredString("Option: ", 165);
 
     int methodChoice;
     cin >> methodChoice;
@@ -41,20 +41,20 @@ void showPaymentSuccessUI(const string &transactionId, double amountPaid) {
 
     string border = "============================================";
 
-    cout << getCenteredString(border, 80) << endl;
-    cout << getCenteredString("PAYMENT SUCCESSFUL", 80) << endl;
-    cout << getCenteredString(border, 80) << endl << endl;
+    cout << getCenteredString(border, 165) << endl;
+    cout << getCenteredString("PAYMENT SUCCESSFUL", 165) << endl;
+    cout << getCenteredString(border, 165) << endl << endl;
 
     ostringstream ssTx, ssPaid;
     ssTx << "Transaction ID : " << transactionId;
     ssPaid << "Total Paid     : $" << fixed << setprecision(2) << amountPaid;
 
-    cout << getCenteredString(ssTx.str(), 80) << endl;
-    cout << getCenteredString(ssPaid.str(), 80) << endl;
-    cout << getCenteredString("Status         : CONFIRMED", 80) << endl << endl;
+    cout << getCenteredString(ssTx.str(), 165) << endl;
+    cout << getCenteredString(ssPaid.str(), 165) << endl;
+    cout << getCenteredString("Status         : CONFIRMED", 165) << endl << endl;
 
-    cout << getCenteredString(border, 80) << endl;
-    cout << getCenteredString("Press Enter to return to main menu...", 80);
+    cout << getCenteredString(border, 165) << endl;
+    cout << getCenteredString("Press Enter to return to main menu...", 165);
 
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
     cin.get();

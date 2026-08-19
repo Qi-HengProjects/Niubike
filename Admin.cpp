@@ -327,7 +327,11 @@ void admin(DataManager &dm)
             }
             case 6: {
                 clearScreen();
-                break;
+                cout << "\nLogging out of Admin...\n";
+                cout << "Press Enter to continue...";
+                string dummy;
+                getline(cin, dummy);
+                return; // exit admin() entirely -> back to login screen in main.cpp
             }
             
             default: {
