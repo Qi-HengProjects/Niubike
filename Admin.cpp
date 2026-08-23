@@ -7,6 +7,7 @@
 #include <sstream>
 #include <limits>
 #include <map>
+#include <algorithm>
 
 using namespace std;
 
@@ -341,6 +342,221 @@ void admin(DataManager &dm)
                 getline(cin, dummy);
                 break;
             }
+        }
+    }
+}
+void manageInventoryAndFleet(DataManager &dm) {
+    const string lineDouble = "======================================================================";
+    const string lineSingle = "----------------------------------------------------------------------";
+
+    while (true) {
+        clearScreen();
+        dm.bicycles.clear();
+        loadBicycles(dm.bicycles);
+
+        int totalBikes = dm.bicycles.size();
+        int totalAvailable = 0, totalRented = 0, totalMaint = 0;
+
+        for (const auto &b : dm.bicycles) {
+            if (b.status == "Available") totalAvailable++;
+            else if (b.status == "Rented") totalRented++;
+            else if (b.status == "Maintenance" || b.status == "Repair") totalMaint++;
+        }
+
+        cout << getCenteredString(lineDouble, 165) << endl;
+        cout << getCenteredString("INVENTORY CONTROL & FLEET MAINTENANCE", 165) << endl;
+        cout << getCenteredString(lineDouble, 165) << endl;
+        cout << getCenteredString("Total: " + to_string(totalBikes) + " | Available: " + to_string(totalAvailable) + " | Rented: " + to_string(totalRented) + " | Maintenance: " + to_string(totalMaint), 165) << endl;
+        cout << getCenteredString(lineSingle, 165) << endl;
+
+        stringstream headerSS;
+        headerSS << left
+                 << setw(10) << "Bike ID"
+                 << setw(18) << "Model / Type"
+                 << setw(14) << "Hourly Rate"
+                 << setw(14) << "Status"
+                 << setw(20) << "Repair / Log Notes";
+        cout << getCenteredString(headerSS.str(), 165) << endl;
+        cout << getCenteredString(lineSingle, 165) << endl;
+
+        if (dm.bicycles.empty()) {
+            cout << getCenteredString("No inventory items found in database.", 165) << endl;
+        } else {
+            for (const auto &b : dm.bicycles) {
+                stringstream rowSS;
+                rowSS << left
+                      << setw(10) << b.bikeId
+                      << setw(18) << b.bikeType
+                      << setw(14) << ("RM " + to_string((int)b.price) + ".00")
+                      << setw(14) << b.status
+                      << setw(20) << b.maintenance;
+
+                cout << getCenteredString(rowSS.str(), 165) << endl;
+            }
+        }
+        cout << getCenteredString(lineDouble, 165) << endl << endl;
+
+        cout << getCenteredString("1. Add New Physical Bicycle       ", 165) << endl;
+        cout << getCenteredString("2. Update Pricing Matrix          ", 165) << endl;
+        cout << getCenteredString("3. Update Maintenance Flag / Status", 165) << endl;
+        cout << getCenteredString("4. Log Mechanical Repair Notes     ", 165) << endl;
+        cout << getCenteredString("5. Return to Main Menu            ", 165) << endl;
+        cout << getCenteredString("Option: ", 165);
+
+        int opt;
+        if (!(cin >> opt)) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            continue;
+        }
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+        if (opt == 5) break;
+
+        switch (opt) {
+            case 1: { // Add New Physical Bicycle
+                Bicycle newBike;
+                cout << "\nEnter New Bike ID (e.g., B005): ";
+                cin >> newBike.bikeId;
+
+                auto it = find_if(dm.bicycles.begin(), dm.bicycles.end(), [&](const Bicycle &b) {
+                    return b.bikeId == newBike.bikeId;
+                });
+
+                if (it != dm.bicycles.end()) {
+                    cout << "Error: Bicycle ID already exists!\nPress Enter to continue...";
+                    string dummy; cin.ignore(numeric_limits<streamsize>::max(), '\n'); getline(cin, dummy);
+                    break;
+                }
+
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                cout << "Enter Bike Model/Type (e.g., Mountain.b, Road.b, Electric.b): ";
+                getline(cin, newBike.bikeType);
+
+                cout << "Enter Base Rental Hourly Rate (RM): ";
+                while (!(cin >> newBike.price) || newBike.price <= 0) {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "Invalid price! Enter a positive numeric value: ";
+                }
+
+                newBike.status = "Available";
+                newBike.maintenance = "Good";
+
+                dm.bicycles.push_back(newBike);
+                saveBicycles(dm.bicycles);
+                cout << "\nBicycle " << newBike.bikeId << " successfully added to fleet. ";
+                cout << "\nPress Enter to continue...";
+                string dummy; cin.ignore(numeric_limits<streamsize>::max(), '\n'); getline(cin, dummy);
+                break;
+            }
+            case 2: { // Update Pricing Matrix
+                cout << "\nUpdate Pricing Matrix By:";
+                cout << "\n1. Specific Bike ID";
+                cout << "\n2. Entire Bike Type Category";
+                cout << "\nChoice: ";
+                int subOpt;
+                cin >> subOpt;
+
+                if (subOpt == 1) {
+                    string targetId;
+                    cout << "Enter Bike ID: ";
+                    cin >> targetId;
+                    auto it = find_if(dm.bicycles.begin(), dm.bicycles.end(), [&](const Bicycle &b) {
+                        return b.bikeId == targetId;
+                    });
+                    if (it != dm.bicycles.end()) {
+                        cout << "Current Price: RM " << it->price << "\nEnter New Hourly Rate (RM): ";
+                        cin >> it->price;
+                        saveBicycles(dm.bicycles);
+                        cout << "Price updated successfully.";
+                    } else {
+                        cout << "Bike ID not found!";
+                    }
+                } else if (subOpt == 2) {
+                    string targetType;
+                    double newPrice;
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "Enter Bike Type/Category (e.g., Mountain): ";
+                    getline(cin, targetType);
+                    cout << "Enter New Hourly Rate (RM) for all " << targetType << " bikes: ";
+                    cin >> newPrice;
+
+                    int updatedCount = 0;
+                    for (auto &b : dm.bicycles) {
+                        if (b.bikeType == targetType) {
+                            b.price = newPrice;
+                            updatedCount++;
+                        }
+                    }
+                    saveBicycles(dm.bicycles);
+                    cout << "Updated pricing for " << updatedCount << " bicycles.";
+                }
+                cout << "\nPress Enter to continue...";
+                string dummy; cin.ignore(numeric_limits<streamsize>::max(), '\n'); getline(cin, dummy);
+                break;
+            }
+            case 3: { // Manage Maintenance Flag / Status
+                string targetId;
+                cout << "\nEnter Bike ID to change status: ";
+                cin >> targetId;
+
+                auto it = find_if(dm.bicycles.begin(), dm.bicycles.end(), [&](const Bicycle &b) {
+                    return b.bikeId == targetId;
+                });
+
+                if (it != dm.bicycles.end()) {
+                    cout << "\nSelect New Status for " << targetId << ":";
+                    cout << "\n1. Available";
+                    cout << "\n2. Maintenance";
+                    cout << "\n3. Repair";
+                    cout << "\n4. Retired";
+                    cout << "\nChoice: ";
+                    int statusChoice;
+                    cin >> statusChoice;
+
+                    switch (statusChoice) {
+                        case 1: it->status = "Available"; break;
+                        case 2: it->status = "Maintenance"; break;
+                        case 3: it->status = "Repair"; break;
+                        case 4: it->status = "Retired"; break;
+                        default: cout << "Invalid choice! Status unchanged."; break;
+                    }
+                    saveBicycles(dm.bicycles);
+                    cout << "\nStatus updated to: " << it->status;
+                } else {
+                    cout << "Bike ID not found!";
+                }
+                cout << "\nPress Enter to continue...";
+                string dummy; cin.ignore(numeric_limits<streamsize>::max(), '\n'); getline(cin, dummy);
+                break;
+            }
+            case 4: { // Log Mechanical Repair
+                string targetId;
+                cout << "\nEnter Bike ID to log repair notes: ";
+                cin >> targetId;
+
+                auto it = find_if(dm.bicycles.begin(), dm.bicycles.end(), [&](const Bicycle &b) {
+                    return b.bikeId == targetId;
+                });
+
+                if (it != dm.bicycles.end()) {
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << "Current Maintenance Note: " << it->maintenance << endl;
+                    cout << "Enter New Mechanical Repair / Inspection Note: ";
+                    getline(cin, it->maintenance);
+
+                    saveBicycles(dm.bicycles);
+                    cout << "\nRepair notes successfully recorded and saved!";
+                } else {
+                    cout << "Bike ID not found!";
+                }
+                cout << "\nPress Enter to continue...";
+                string dummy; cin.ignore(numeric_limits<streamsize>::max(), '\n'); getline(cin, dummy);
+                break;
+            }
+            default:
+                break;
         }
     }
 }
