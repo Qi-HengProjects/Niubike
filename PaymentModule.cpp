@@ -10,7 +10,7 @@
 
 using namespace std;
 
-int showPaymentGatewayUI(double grandTotal) {
+int showPaymentGateway(double grandTotal) {
     clearScreen();
 
     string border = "============================================";
@@ -36,7 +36,7 @@ int showPaymentGatewayUI(double grandTotal) {
     return methodChoice;
 }
 
-void showPaymentSuccessUI(const string &transactionId, double amountPaid) {
+void showPaymentSuccess(const string &transactionId, double amountPaid) {
     clearScreen();
 
     string border = "============================================";
@@ -70,12 +70,18 @@ void paymentLogic(DataManager &dm, int methodChoice, double amountDue, const Cus
             switch (methodChoice) {
                 case 1: {
                     cout << "\nInput the amount paid: $";
-                    cin >> amountPaid;
-
-                    // 2. Prompt again inside loop if input is invalid/insufficient
-                    while (amountPaid < amountDue) {
-                        cout << "Insufficient amount! Minimum due is $" << fixed << setprecision(2) << amountDue << ". Try again: $";
-                        cin >> amountPaid;
+                    while (true) {
+                        if (!(cin >> amountPaid)) {
+                            cin.clear();
+                            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                            cout << "Invalid amount! Please enter a number: $";
+                            continue;
+                        }
+                        if (amountPaid < amountDue) {
+                            cout << "Insufficient amount! Minimum due is $" << fixed << setprecision(2) << amountDue << ". Try again: $";
+                            continue;
+                        }
+                        break;
                     }
 
                     change = amountPaid - amountDue;
@@ -100,9 +106,11 @@ void paymentLogic(DataManager &dm, int methodChoice, double amountDue, const Cus
                 // 3. Update database status in RAM and save to file
                 r.paymentStatus = "Paid";
                 saveRentals(dm.rentals);
-                cout << "\n[+] Payment status updated to 'Paid' in database!" << endl;
+                string transactionId = "TXN-" + r.rentalId;
+                showPaymentSuccess(transactionId, amountDue);
+                return;
             }
-
+            
             cout << "\nPress Enter to continue...";
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
             cin.get();
@@ -134,7 +142,7 @@ void processPayment(DataManager &dm, const Customer &currentCustomer) {
     }
 
     // 1. Show UI and get user choice
-    int choice = showPaymentGatewayUI(totalDue);
+    int choice = showPaymentGateway(totalDue);
 
     // 2. Execute Payment Logic
     if (choice != 0) {

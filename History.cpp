@@ -34,7 +34,7 @@ void displayUserHistory(const DataManager &dm, const string &customerId) {
              << "| " << setw(13) << "Duration"
              << "| " << setw(17) << "Payment Status"
              << "| " << setw(14) << "Renting Status"
-             << "| " << setw(13) << "Total Paid"
+             << "| " << setw(13) << "Total Amount"
              << "| " << "Bikes Rented";
     cout << getCenteredString(headerSS.str(), 165) << endl;
     cout << getCenteredString(divider, 165) << endl;

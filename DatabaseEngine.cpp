@@ -188,3 +188,21 @@ void saveAllDatabases(const DataManager &dm) {
     saveBicycles(dm.bicycles);
     saveRentals(dm.rentals);
 }
+
+Rental* findRentalById(DataManager &dm, const string &rentalId) {
+    for (auto &r : dm.rentals) {
+        if (r.rentalId == rentalId) {
+            return &r;
+        }
+    }
+    return nullptr;
+}
+
+Bicycle* findBicycleById(DataManager &dm, const string &bikeId) {
+    for (auto &b : dm.bicycles) {
+        if (b.bikeId == bikeId) {
+            return &b;
+        }
+    }
+    return nullptr;
+}

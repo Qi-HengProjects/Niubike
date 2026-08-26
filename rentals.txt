@@ -3,4 +3,5 @@ R2,5 hours,Pending,Active,20,15,C1,B010
 R3,3 hours,Paid,Returned,45,30,C2,B001;B004
 R4,5 hours,Pending,Active,50,15,C2,B005
 R5,2 hours,Pending,Active,34,30,C2,B001;B006
-R6,3 hours,Paid,Active,30,30,C5,B002;B003
+R6,3 hours,Paid,Returned,30,30,C5,B002;B003
+R7,2 hours,Paid,Active,20,30,C5,B002;B003

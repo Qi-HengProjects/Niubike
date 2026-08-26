@@ -162,7 +162,6 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
 
     // 2. Map option numbers to Category Names and Prices
     const string categoryNames[6] = { "", "Regular", "Two Seater", "E-Bike", "Kids Bike", "City Bike" };
-    const double categoryPrices[6] = { 0.0, 5.00, 10.00, 12.00, 4.00, 7.00 };
 
     // 3. Match selections to actual available bicycles in database and assign IDs
     vector<string> assignedBikeIds;
@@ -264,6 +263,89 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
     dm.rentals.push_back(newR);
     saveRentals(dm.rentals);
 
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    cin.get();
+}
+
+bool topUpRental(DataManager &dm, const string &rentalId, int extraHours) {
+    if (extraHours <= 0) {
+        cout << "[Error] Extra hours must be greater than 0.\n";
+        return false;
+    }
+
+    Rental* record = findRentalById(dm, rentalId);
+    if (!record) {
+        cout << "[Error] Rental ID " << rentalId << " not found.\n";
+        return false;
+    }
+
+    if (trim(record->rentingStatus) != "Active") {
+        cout << "[Error] Cannot top up hours for an already returned/completed rental.\n";
+        return false;
+    }
+
+    if (record->bikeIdsStr.empty()) {
+        cout << "[Error] No bicycles associated with this rental.\n";
+        return false;
+    }
+
+    double totalHourlyRate = 0.0;
+    for (const auto &bikeId : record->bikeIdsStr) {
+        Bicycle* bike = findBicycleById(dm, bikeId);
+        if (bike) {
+            totalHourlyRate += bike->price;
+        }
+    }
+
+    double addedCost = extraHours * totalHourlyRate;
+
+    int currentHours = 0;
+    stringstream durSS(record->rentalDuration);
+    durSS >> currentHours;
+    int newHours = currentHours + extraHours;
+
+    record->rentalDuration = to_string(newHours) + " hours";
+    record->rentingPrice += addedCost;
+    record->paymentStatus = "Pending";
+
+    saveRentals(dm.rentals);
+
+    cout << "\n========================================\n";
+    cout << "        TOP-UP SUCCESSFUL!              \n";
+    cout << "========================================\n";
+    cout << "Rental ID       : " << record->rentalId << "\n";
+    cout << "Hours Added     : +" << extraHours << " hour(s)\n";
+    cout << "New Duration    : " << newHours << " total hour(s)\n";
+    cout << "Additional Fee  : $" << fixed << setprecision(2) << addedCost << "\n";
+    cout << "New Rental Cost : $" << fixed << setprecision(2) << record->rentingPrice << "\n";
+    cout << "Payment Status  : Pending (please settle the difference at the Payment page)\n";
+    cout << "========================================\n";
+    return true;
+}
+
+void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer) {
+    cout << "\n--- Extend / Top-Up Rental Time ---\n";
+
+    string rentalId;
+    cout << "Enter Rental ID: ";
+    cin >> rentalId;
+
+    int extraHours;
+    cout << "Enter additional hours to add: ";
+    while (!(cin >> extraHours)) {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cout << "Invalid input! Enter additional hours to add: ";
+    }
+
+    Rental* record = findRentalById(dm, trim(rentalId));
+    if (record && trim(record->custId) != trim(currentCustomer.customerId)) {
+        cout << "[Error] That rental does not belong to your account.\n";
+    } else {
+        topUpRental(dm, trim(rentalId), extraHours);
+    }
+
+    cout << "\nPress Enter to continue...";
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
     cin.get();
 }

@@ -287,6 +287,7 @@ void menu(DataManager &dm, const Customer &currentCustomer)
                 break;
             }
             case 2:
+                handleTopUpMenu(dm, currentCustomer);
                 break;
             case 3:
                 returnBikeLogic(dm, currentCustomer);
