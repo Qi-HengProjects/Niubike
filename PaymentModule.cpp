@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <limits>
+#include <sstream>
 #include "MainMenu.h"
 #include "DatabaseEngine.h"
 #include "Helpers.h"
@@ -21,7 +22,7 @@ int showPaymentGateway(double grandTotal) {
 
     ostringstream ssAmount;
     ssAmount << "Amount Payable: $" << fixed << setprecision(2) << grandTotal;
-    cout << getCenteredString(ssAmount.str(), 80) << endl << endl;
+    cout << getCenteredString(ssAmount.str(), 165) << endl << endl;
 
     cout << getCenteredString("Select Payment Method:", 165) << endl;
     cout << getCenteredString("1. Cash               ", 165) << endl;
@@ -69,36 +70,40 @@ void paymentLogic(DataManager &dm, int methodChoice, double amountDue, const Cus
 
             switch (methodChoice) {
                 case 1: {
-                    cout << "\nInput the amount paid: $";
+                    cout << "\n" << getCenteredString("Input the amount paid: $", 165);
                     while (true) {
                         if (!(cin >> amountPaid)) {
                             cin.clear();
                             cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                            cout << "Invalid amount! Please enter a number: $";
+                            cout << getCenteredString("Invalid amount! Please enter a number: $", 165);
                             continue;
                         }
                         if (amountPaid < amountDue) {
-                            cout << "Insufficient amount! Minimum due is $" << fixed << setprecision(2) << amountDue << ". Try again: $";
+                            ostringstream ssErr;
+                            ssErr << "Insufficient amount! Minimum due is $" << fixed << setprecision(2) << amountDue << ". Try again: $";
+                            cout << getCenteredString(ssErr.str(), 165);
                             continue;
                         }
                         break;
                     }
 
                     change = amountPaid - amountDue;
-                    cout << "Change: $" << fixed << setprecision(2) << change << endl;
+                    ostringstream ssChange;
+                    ssChange << "Change: $" << fixed << setprecision(2) << change;
+                    cout << getCenteredString(ssChange.str(), 165) << endl;
                     success = true;
                     break;
                 }
                 case 2:
-                    cout << "\nScan the QR code below to make the payment." << endl;
+                    cout << "\n" << getCenteredString("Scan the QR code below to make the payment.", 165) << endl;
                     success = true;
                     break;
                 case 3:
-                    cout << "\nPlease wave or insert your card in the POS machine." << endl;
+                    cout << "\n" << getCenteredString("Please wave or insert your card in the POS machine.", 165) << endl;
                     success = true;
                     break;
                 default:
-                    cout << "\nInvalid payment choice." << endl;
+                    cout << "\n" << getCenteredString("Invalid payment choice.", 165) << endl;
                     break;
             }
 
@@ -111,7 +116,7 @@ void paymentLogic(DataManager &dm, int methodChoice, double amountDue, const Cus
                 return;
             }
             
-            cout << "\nPress Enter to continue...";
+            cout << "\n" << getCenteredString("Press Enter to continue...", 165);
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
             cin.get();
             return;
@@ -134,17 +139,15 @@ void processPayment(DataManager &dm, const Customer &currentCustomer) {
 
     if (!hasPending) {
         clearScreen();
-        cout << "No pending payments found for your account.\n\n";
-        cout << "Press Enter to return to main menu...";
+        cout << getCenteredString("No pending payments found for your account.", 165) << "\n\n";
+        cout << getCenteredString("Press Enter to return to main menu...", 165);
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
         cin.get();
         return;
     }
 
-    // 1. Show UI and get user choice
     int choice = showPaymentGateway(totalDue);
 
-    // 2. Execute Payment Logic
     if (choice != 0) {
         paymentLogic(dm, choice, totalDue, currentCustomer);
     }
