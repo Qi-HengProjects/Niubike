@@ -61,83 +61,142 @@ void showPaymentSuccess(const string &transactionId, double amountPaid) {
     cin.get();
 }
 
-void paymentLogic(DataManager &dm, int methodChoice, double amountDue, const Customer &currentCustomer) {
-    for (auto &r : dm.rentals) {
-        // 1. Changed while to if to prevent infinite looping
-        if (r.custId == currentCustomer.customerId && r.paymentStatus == "Pending") {
-            double amountPaid = 0.0, change = 0.0;
-            bool success = false;
+// Lets the customer choose which pending rental they want to pay for,
+// instead of always settling whichever one happens to be first in the list.
+Rental* selectPendingRental(DataManager &dm, vector<Rental*> &pending) {
+    // Only one pending rental -- nothing to choose, pay it directly.
+    if (pending.size() == 1) {
+        return pending[0];
+    }
 
-            switch (methodChoice) {
-                case 1: {
-                    cout << "\n" << getCenteredString("Input the amount paid: $", 165);
-                    while (true) {
-                        if (!(cin >> amountPaid)) {
-                            cin.clear();
-                            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                            cout << getCenteredString("Invalid amount! Please enter a number: $", 165);
-                            continue;
-                        }
-                        if (amountPaid < amountDue) {
-                            ostringstream ssErr;
-                            ssErr << "Insufficient amount! Minimum due is $" << fixed << setprecision(2) << amountDue << ". Try again: $";
-                            cout << getCenteredString(ssErr.str(), 165);
-                            continue;
-                        }
-                        break;
-                    }
+    clearScreen();
 
-                    change = amountPaid - amountDue;
-                    ostringstream ssChange;
-                    ssChange << "Change: $" << fixed << setprecision(2) << change;
-                    cout << getCenteredString(ssChange.str(), 165) << endl;
-                    success = true;
-                    break;
-                }
-                case 2:
-                    cout << "\n" << getCenteredString("Scan the QR code below to make the payment.", 165) << endl;
-                    success = true;
-                    break;
-                case 3:
-                    cout << "\n" << getCenteredString("Please wave or insert your card in the POS machine.", 165) << endl;
-                    success = true;
-                    break;
-                default:
-                    cout << "\n" << getCenteredString("Invalid payment choice.", 165) << endl;
-                    break;
-            }
+    string border = "===============================================================================";
 
-            if (success) {
-                r.paymentStatus = "Paid";
-                r.amountPaid = r.rentingPrice + r.deposit;   // NEW: fully settle the current balance
-                saveRentals(dm.rentals);
-                string transactionId = "TXN-" + r.rentalId;
-                showPaymentSuccess(transactionId, amountDue);
-                return;
-            }
-            
-            cout << "\n" << getCenteredString("Press Enter to continue...", 165);
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
-            cin.get();
-            return;
+    cout << getCenteredString(border, 165) << endl;
+    cout << getCenteredString("SELECT RENTAL TO PAY FOR", 165) << endl;
+    cout << getCenteredString(border, 165) << endl << endl;
+
+    for (size_t i = 0; i < pending.size(); i++) {
+        Rental *r = pending[i];
+        double due = (r->rentingPrice + r->deposit) - r->amountPaid;
+
+        string bikeList;
+        for (size_t j = 0; j < r->bikeIdsStr.size(); j++) {
+            bikeList += r->bikeIdsStr[j];
+            if (j + 1 < r->bikeIdsStr.size()) bikeList += ", ";
         }
+        if (bikeList.empty()) bikeList = "-";
+
+        ostringstream ssRow;
+        ssRow << (i + 1) << ". Rental " << r->rentalId
+              << " | Bike(s): " << bikeList
+              << " | Duration: " << r->rentalDuration
+              << " | Due: $" << fixed << setprecision(2) << due;
+
+        cout << getCenteredString(ssRow.str(), 165) << endl;
+    }
+
+    cout << endl;
+    cout << getCenteredString("0. Cancel", 165) << endl << endl;
+    cout << getCenteredString("Select rental to pay (enter number): ", 165);
+
+    int choice;
+    while (true) {
+        if (!(cin >> choice)) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cout << getCenteredString("Invalid input! Enter a number: ", 165);
+            continue;
+        }
+        if (choice == 0) {
+            return nullptr;
+        }
+        if (choice >= 1 && choice <= static_cast<int>(pending.size())) {
+            return pending[choice - 1];
+        }
+        cout << getCenteredString("Invalid choice! Try again: ", 165);
     }
 }
 
-void processPayment(DataManager &dm, const Customer &currentCustomer) {
-    double totalDue = 0.0;
-    bool hasPending = false;
+void paymentLogic(DataManager &dm, int methodChoice, double amountDue, const Customer &currentCustomer, const string &rentalId) {
+    Rental *rPtr = findRentalById(dm, rentalId);
 
-    // Find total amount due for pending rental
-    for (const auto &r : dm.rentals) {
-        if (r.custId == currentCustomer.customerId && r.paymentStatus == "Pending") {
-            totalDue = (r.rentingPrice + r.deposit) - r.amountPaid;
-            hasPending = true;
+    if (!rPtr || rPtr->custId != currentCustomer.customerId || rPtr->paymentStatus != "Pending") {
+        cout << "\n" << getCenteredString("[Error] Rental not found or already paid.", 165) << endl;
+        cout << "\n" << getCenteredString("Press Enter to continue...", 165);
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cin.get();
+        return;
+    }
+
+    Rental &r = *rPtr;
+    double amountPaid = 0.0, change = 0.0;
+    bool success = false;
+
+    switch (methodChoice) {
+        case 1: {
+            cout << "\n" << getCenteredString("Input the amount paid: $", 165);
+            while (true) {
+                if (!(cin >> amountPaid)) {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << getCenteredString("Invalid amount! Please enter a number: $", 165);
+                    continue;
+                }
+                if (amountPaid < amountDue) {
+                    ostringstream ssErr;
+                    ssErr << "Insufficient amount! Minimum due is $" << fixed << setprecision(2) << amountDue << ". Try again: $";
+                    cout << getCenteredString(ssErr.str(), 165);
+                    continue;
+                }
+                break;
+            }
+
+            change = amountPaid - amountDue;
+            ostringstream ssChange;
+            ssChange << "Change: $" << fixed << setprecision(2) << change;
+            cout << getCenteredString(ssChange.str(), 165) << endl;
+            success = true;
             break;
+        }
+        case 2:
+            cout << "\n" << getCenteredString("Scan the QR code below to make the payment.", 165) << endl;
+            success = true;
+            break;
+        case 3:
+            cout << "\n" << getCenteredString("Please wave or insert your card in the POS machine.", 165) << endl;
+            success = true;
+            break;
+        default:
+            cout << "\n" << getCenteredString("Invalid payment choice.", 165) << endl;
+            break;
+    }
+
+    if (success) {
+        r.paymentStatus = "Paid";
+        r.amountPaid = r.rentingPrice + r.deposit;   // fully settle the current balance
+        saveRentals(dm.rentals);
+        string transactionId = "TXN-" + r.rentalId;
+        showPaymentSuccess(transactionId, amountDue);
+        return;
+    }
+
+    cout << "\n" << getCenteredString("Press Enter to continue...", 165);
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    cin.get();
+}
+
+void processPayment(DataManager &dm, const Customer &currentCustomer) {
+    // Gather ALL pending rentals for this customer (not just the first one found)
+    vector<Rental*> pending;
+    for (auto &r : dm.rentals) {
+        if (r.custId == currentCustomer.customerId && r.paymentStatus == "Pending") {
+            pending.push_back(&r);
         }
     }
 
-    if (!hasPending) {
+    if (pending.empty()) {
         clearScreen();
         cout << getCenteredString("No pending payments found for your account.", 165) << "\n\n";
         cout << getCenteredString("Press Enter to return to main menu...", 165);
@@ -146,9 +205,17 @@ void processPayment(DataManager &dm, const Customer &currentCustomer) {
         return;
     }
 
+    Rental *selected = selectPendingRental(dm, pending);
+    if (!selected) {
+        return; // user cancelled selection
+    }
+
+    double totalDue = (selected->rentingPrice + selected->deposit) - selected->amountPaid;
+    string selectedRentalId = selected->rentalId;
+
     int choice = showPaymentGateway(totalDue);
 
     if (choice != 0) {
-        paymentLogic(dm, choice, totalDue, currentCustomer);
+        paymentLogic(dm, choice, totalDue, currentCustomer, selectedRentalId);
     }
 }
