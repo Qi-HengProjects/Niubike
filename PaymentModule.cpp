@@ -108,8 +108,8 @@ void paymentLogic(DataManager &dm, int methodChoice, double amountDue, const Cus
             }
 
             if (success) {
-                // 3. Update database status in RAM and save to file
                 r.paymentStatus = "Paid";
+                r.amountPaid = r.rentingPrice + r.deposit;   // NEW: fully settle the current balance
                 saveRentals(dm.rentals);
                 string transactionId = "TXN-" + r.rentalId;
                 showPaymentSuccess(transactionId, amountDue);
@@ -131,7 +131,7 @@ void processPayment(DataManager &dm, const Customer &currentCustomer) {
     // Find total amount due for pending rental
     for (const auto &r : dm.rentals) {
         if (r.custId == currentCustomer.customerId && r.paymentStatus == "Pending") {
-            totalDue = r.rentingPrice + r.deposit;
+            totalDue = (r.rentingPrice + r.deposit) - r.amountPaid;
             hasPending = true;
             break;
         }

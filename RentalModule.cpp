@@ -249,6 +249,7 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
     newR.rentingStatus = "Active";
     newR.rentingPrice  = subtotal;
     newR.deposit = totalDeposit;
+    newR.amountPaid = 0.0;   
     newR.custId = currentCustomer.customerId;
     newR.bikeIdsStr = assignedBikeIds;
 

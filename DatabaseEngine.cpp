@@ -84,13 +84,14 @@ void loadRentals(vector<Rental> &rentals) {
             continue;
         }
         stringstream ss(line);
-        string id, duration, payment_status, renting_status, renting_price, deposit, custId, bikeIdsStr;
+        string id, duration, payment_status, renting_status, renting_price, deposit, amount_paid, custId, bikeIdsStr;
         if (getline(ss, id, ',') &&
             getline(ss, duration, ',') &&
             getline(ss, payment_status, ',') &&
             getline(ss, renting_status, ',') &&
             getline(ss, renting_price, ',') &&
             getline(ss, deposit, ',') &&
+            getline(ss, amount_paid, ',') &&
             getline(ss, custId, ',') &&
             getline(ss, bikeIdsStr, ',')) {
             Rental temp;
@@ -100,6 +101,7 @@ void loadRentals(vector<Rental> &rentals) {
             temp.paymentStatus = payment_status;
             temp.rentingPrice = stod(renting_price);
             temp.deposit = stod(deposit);
+            temp.amountPaid = stod(amount_paid);
             temp.custId = custId;
 
             stringstream bikeSS(bikeIdsStr);
@@ -161,6 +163,7 @@ void saveRentals(const vector<Rental> &rentals) {
                  << r.rentingStatus << ','
                  << r.rentingPrice << ','
                  << r.deposit << ','
+                 << r.amountPaid << ','
                  << r.custId << ',';
 
             // Join vector<string> bikeIds using ';' as a sub-delimiter

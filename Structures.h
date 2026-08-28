@@ -21,6 +21,7 @@ struct Rental {
     string rentingStatus;
     double rentingPrice;
     double deposit;
+    double amountPaid = 0.0;
     string custId;
     vector<string> bikeIdsStr;
 };
