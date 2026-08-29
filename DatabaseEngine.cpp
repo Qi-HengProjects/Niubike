@@ -178,6 +178,13 @@ void loadRentals(vector<Rental> &rentals) {
                 temp.originalBikeIdsStr = temp.bikeIdsStr;
             }
 
+            // Optional 3rd trailing column: whether this rental has ever been
+            // topped up. Missing on older rows -> defaults to false, i.e.
+            // "not topped up", which is the safe assumption for legacy data.
+            string toppedUpStr;
+            getline(ss, toppedUpStr, ',');
+            temp.toppedUp = (toppedUpStr == "1");
+
             rentals.push_back(temp);
             }
     }
@@ -251,6 +258,10 @@ void saveRentals(const vector<Rental> &rentals) {
                     file << ';';
                 }
             }
+
+            // toppedUp: 1 if hours have ever been added to this rental, used
+            // to gate cancellation eligibility.
+            file << ',' << (r.toppedUp ? '1' : '0');
 
             file << endl; // Ended line without a trailing comma
         }

@@ -346,6 +346,7 @@ bool topUpRental(DataManager &dm, const string &rentalId, int extraHours) {
     record->rentalDuration = to_string(newHours) + " hours";
     record->rentingPrice += addedCost;
     record->paymentStatus = "Pending";
+    record->toppedUp = true; // no longer eligible for cancellation once extended
 
     saveRentals(dm.rentals);
 
@@ -379,6 +380,20 @@ bool cancelRental(DataManager &dm, const string &rentalId) {
         return false;
     }
 
+    // Cancellation is only for bookings nobody has touched yet: once it's
+    // been paid for, or extended via Top-Up, it has to go through Return
+    // Bike / Payment instead of being voided outright.
+    if (trim(record->paymentStatus) == "Paid") {
+        cout << getCenteredString("[Error] This rental has already been paid for and can no longer be cancelled.", 165) << "\n";
+        cout << getCenteredString("Please use Return Bike instead.", 165) << "\n";
+        return false;
+    }
+
+    if (record->toppedUp) {
+        cout << getCenteredString("[Error] This rental has already been topped up and can no longer be cancelled.", 165) << "\n";
+        return false;
+    }
+
     if (record->bikeIdsStr.empty()) {
         cout << getCenteredString("[Error] No bicycles associated with this rental.", 165) << "\n";
         return false;
@@ -401,9 +416,6 @@ bool cancelRental(DataManager &dm, const string &rentalId) {
         return false;
     }
 
-    bool wasPaid = (trim(record->paymentStatus) == "Paid");
-    double refundAmount = wasPaid ? (record->rentingPrice + record->deposit) : 0.0;
-
     // Release every bike tied to this rental back into the available pool --
     // cancelling a booking must free up stock immediately, exactly like a
     // real return does.
@@ -417,10 +429,10 @@ bool cancelRental(DataManager &dm, const string &rentalId) {
 
     record->bikeIdsStr.clear();
     record->rentingStatus = "Cancelled";
-    record->paymentStatus = wasPaid ? "Refunded" : "Cancelled";
+    record->paymentStatus = "Cancelled";
     record->rentingPrice = 0.0;
     record->deposit = 0.0;
-    record->amountPaid = wasPaid ? refundAmount : 0.0; // kept as a record of what's owed back
+    record->amountPaid = 0.0; // nothing was ever paid -- nothing to refund
 
     saveRentals(dm.rentals);
 
@@ -429,13 +441,7 @@ bool cancelRental(DataManager &dm, const string &rentalId) {
     cout << getCenteredString("        RENTAL CANCELLED                ", 165) << "\n";
     cout << getCenteredString("========================================", 165) << "\n";
     cout << getCenteredString("Rental ID       : " + record->rentalId, 165) << "\n";
-    if (wasPaid) {
-        ostringstream ssRefund;
-        ssRefund << fixed << setprecision(2) << refundAmount;
-        cout << getCenteredString("Refund Due      : $" + ssRefund.str() + " (please claim this at the counter)", 165) << "\n";
-    } else {
-        cout << getCenteredString("No payment had been made for this rental -- nothing to refund.", 165) << "\n";
-    }
+    cout << getCenteredString("No payment had been made for this rental -- nothing to refund.", 165) << "\n";
     cout << getCenteredString("The bike(s) from this booking are back in stock immediately.", 165) << "\n";
     cout << getCenteredString("========================================", 165) << "\n";
     return true;
@@ -447,7 +453,7 @@ void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer) {
     string divider = "------------+--------------------------+--------------------+------------------";
 
     cout << getCenteredString(border, 165) << "\n";
-    cout << getCenteredString("ACTIVE RENTALS -- TOP-UP OR CANCEL", 165) << "\n";
+    cout << getCenteredString("ACTIVE RENTALS AVAILABLE FOR TOP-UP", 165) << "\n";
     cout << getCenteredString(border, 165) << "\n\n";
 
     // Gather active rentals for this customer
@@ -459,7 +465,7 @@ void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer) {
     }
 
     if (activeRentals.empty()) {
-        cout << getCenteredString("No active rentals found to manage.", 165) << "\n\n";
+        cout << getCenteredString("No active rentals found to top up.", 165) << "\n\n";
         cout << getCenteredString(border, 165) << "\n";
         cout << getCenteredString("Press Enter to return...", 165);
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
@@ -501,7 +507,7 @@ void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer) {
     cout << getCenteredString(border, 165) << "\n\n";
 
     string rentalId;
-    cout << getCenteredString("Enter Rental ID to Manage (or 0 to cancel): ", 165);
+    cout << getCenteredString("Enter Rental ID to Top-Up (or 0 to cancel): ", 165);
     cin >> rentalId;
     if (!cin) {
         cin.clear();
@@ -521,59 +527,128 @@ void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer) {
         return;
     }
 
-    cout << "\n" << getCenteredString("Rental " + record->rentalId + " selected. What would you like to do?", 165) << "\n\n";
-    cout << getCenteredString("1. Top Up (Add Hours)", 165) << "\n";
-    cout << getCenteredString("2. Cancel This Rental", 165) << "\n";
-    cout << getCenteredString("0. Back", 165) << "\n\n";
-    cout << getCenteredString("Option: ", 165);
-
-    int actionChoice;
-    while (!(cin >> actionChoice)) {
+    int extraHours;
+    cout << getCenteredString("Enter additional hours to add: ", 165);
+    while (!(cin >> extraHours)) {
         cin.clear();
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
         checkEofOrExit();
-        cout << getCenteredString("Invalid input! Enter 0, 1, or 2: ", 165);
+        cout << getCenteredString("Invalid input! Enter additional hours to add: ", 165);
     }
 
-    if (actionChoice == 0) {
+    topUpRental(dm, trim(rentalId), extraHours);
+
+    cout << "\n" << getCenteredString("Press Enter to continue...", 165);
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    cin.get();
+}
+
+void handleCancelMenu(DataManager &dm, const Customer &currentCustomer) {
+    clearScreen();
+    string border  = "===============================================================================";
+    string divider = "------------+--------------------------+--------------------+------------------";
+
+    cout << getCenteredString(border, 165) << "\n";
+    cout << getCenteredString("CANCEL RENTAL", 165) << "\n";
+    cout << getCenteredString(border, 165) << "\n\n";
+
+    // Only rentals that are still Active, not yet paid, and never topped up
+    // are eligible -- once money has changed hands or the booking's been
+    // extended, it has to go through Return Bike / Payment instead.
+    vector<Rental*> cancellable;
+    for (auto &r : dm.rentals) {
+        if (trim(r.custId) == trim(currentCustomer.customerId)
+            && trim(r.rentingStatus) == "Active"
+            && trim(r.paymentStatus) == "Pending"
+            && !r.toppedUp) {
+            cancellable.push_back(&r);
+        }
+    }
+
+    if (cancellable.empty()) {
+        cout << getCenteredString("No rentals available for cancellation.", 165) << "\n";
+        cout << getCenteredString("(Only unpaid rentals that haven't been topped up can be cancelled.)", 165) << "\n\n";
+        cout << getCenteredString(border, 165) << "\n";
+        cout << getCenteredString("Press Enter to return...", 165);
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cin.get();
         return;
     }
 
-    if (actionChoice == 1) {
-        int extraHours;
-        cout << getCenteredString("Enter additional hours to add: ", 165);
-        while (!(cin >> extraHours)) {
+    ostringstream headerSS;
+    headerSS << " " << left << setw(10) << "Rental ID"
+             << "| " << setw(25) << "Assigned Bike"
+             << "| " << setw(19) << "Duration"
+             << "| " << "Price ($)";
+    cout << getCenteredString(headerSS.str(), 165) << "\n";
+    cout << getCenteredString(divider, 165) << "\n";
+
+    for (const auto *r : cancellable) {
+        string bikeList;
+        for (size_t j = 0; j < r->bikeIdsStr.size(); j++) {
+            bikeList += r->bikeIdsStr[j];
+            if (j + 1 < r->bikeIdsStr.size()) bikeList += ", ";
+        }
+        if (bikeList.empty()) bikeList = "-";
+
+        ostringstream rowSS;
+        rowSS << " " << left << setw(10) << r->rentalId
+              << "| " << setw(25) << bikeList
+              << "| " << setw(19) << r->rentalDuration
+              << "| $" << fixed << setprecision(2) << r->rentingPrice;
+        cout << getCenteredString(rowSS.str(), 165) << "\n";
+    }
+    cout << getCenteredString(border, 165) << "\n\n";
+
+    string rentalId;
+    cout << getCenteredString("Enter Rental ID to Cancel (or 0 to go back): ", 165);
+    cin >> rentalId;
+    if (!cin) {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        checkEofOrExit();
+        return;
+    }
+
+    if (trim(rentalId) == "0") return;
+
+    bool eligible = false;
+    for (const auto *r : cancellable) {
+        if (trim(r->rentalId) == trim(rentalId)) {
+            eligible = true;
+            break;
+        }
+    }
+
+    if (!eligible) {
+        cout << "\n" << getCenteredString("[Error] Invalid selection, or that rental isn't eligible for cancellation.", 165) << "\n";
+        cout << getCenteredString("Press Enter to continue...", 165);
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cin.get();
+        return;
+    }
+
+    int confirm = 0;
+    cout << "\n" << getCenteredString("Are you sure you want to cancel Rental " + trim(rentalId) + "?", 165) << "\n";
+    cout << getCenteredString("1. Yes, cancel it", 165) << "\n";
+    cout << getCenteredString("2. No, keep it", 165) << "\n";
+    cout << getCenteredString("Option: ", 165);
+    while (true) {
+        if (!(cin >> confirm)) {
             cin.clear();
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
             checkEofOrExit();
-            cout << getCenteredString("Invalid input! Enter additional hours to add: ", 165);
+            cout << getCenteredString("Invalid input! Enter 1 or 2: ", 165);
+            continue;
         }
-        topUpRental(dm, trim(rentalId), extraHours);
-    } else if (actionChoice == 2) {
-        int confirm = 0;
-        cout << getCenteredString("Are you sure you want to cancel this rental?", 165) << "\n";
-        cout << getCenteredString("1. Yes, cancel it", 165) << "\n";
-        cout << getCenteredString("2. No, keep it", 165) << "\n";
-        cout << getCenteredString("Option: ", 165);
-        while (true) {
-            if (!(cin >> confirm)) {
-                cin.clear();
-                cin.ignore(numeric_limits<streamsize>::max(), '\n');
-                checkEofOrExit();
-                cout << getCenteredString("Invalid input! Enter 1 or 2: ", 165);
-                continue;
-            }
-            if (confirm == 1 || confirm == 2) break;
-            cout << getCenteredString("Invalid choice! Enter 1 or 2: ", 165);
-        }
+        if (confirm == 1 || confirm == 2) break;
+        cout << getCenteredString("Invalid choice! Enter 1 or 2: ", 165);
+    }
 
-        if (confirm == 1) {
-            cancelRental(dm, trim(rentalId));
-        } else {
-            cout << "\n" << getCenteredString("Cancellation aborted. Your rental remains active.", 165) << "\n";
-        }
+    if (confirm == 1) {
+        cancelRental(dm, trim(rentalId));
     } else {
-        cout << "\n" << getCenteredString("Invalid choice. Nothing was changed.", 165) << "\n";
+        cout << "\n" << getCenteredString("Cancellation aborted. Your rental remains active.", 165) << "\n";
     }
 
     cout << "\n" << getCenteredString("Press Enter to continue...", 165);

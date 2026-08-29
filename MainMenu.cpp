@@ -261,12 +261,13 @@ void menu(DataManager &dm, Customer &currentCustomer)
         clearScreen();
         const string menuText = R"(
     1. Rent            
-    2. Top-Up / Cancel 
-    3. Return Bike     
-    4. Payment         
-    5. History         
-    6. Loyalty Program 
-    7. Exit            
+    2. Cancel Rental   
+    3. Top Up Time     
+    4. Return Bike     
+    5. Payment         
+    6. History         
+    7. Loyalty Program 
+    8. Exit            
     )";
 
         printCenteredBlock(menuText, 165);
@@ -293,21 +294,24 @@ void menu(DataManager &dm, Customer &currentCustomer)
                 break;
             }
             case 2:
-                handleTopUpMenu(dm, currentCustomer);
+                handleCancelMenu(dm, currentCustomer);
                 break;
             case 3:
-                returnBikeLogic(dm, currentCustomer);
+                handleTopUpMenu(dm, currentCustomer);
                 break;
             case 4:
-                processPayment(dm, currentCustomer);
+                returnBikeLogic(dm, currentCustomer);
                 break;
             case 5:
-                displayUserHistory(dm, currentCustomer.customerId);
+                processPayment(dm, currentCustomer);
                 break;
             case 6:
-                handleLoyaltyMenu(dm, currentCustomer);
+                displayUserHistory(dm, currentCustomer.customerId);
                 break;
             case 7:
+                handleLoyaltyMenu(dm, currentCustomer);
+                break;
+            case 8:
                 cout << "\nLogging out...\n";
                 cout << "Press Enter to continue...";
                 cin.ignore(numeric_limits<streamsize>::max(), '\n');

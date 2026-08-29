@@ -37,6 +37,13 @@ struct Rental {
     // this never changes after checkout, so fleet/popularity analytics can
     // still attribute historical rentals to a bike/category after return.
     vector<string> originalBikeIdsStr;
+
+    // True once this rental has had hours added via Top-Up. Cancellation is
+    // only offered for rentals that are still Pending AND have never been
+    // topped up -- this flag is how that second condition is checked, since
+    // rentalDuration/rentingPrice alone don't reveal whether they were ever
+    // extended after checkout.
+    bool toppedUp = false;
 };
 
 struct Customer {
