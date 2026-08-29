@@ -13,5 +13,7 @@ void loadAllDatabases(DataManager &dm);
 void saveAllDatabases(const DataManager &dm);
 Rental* findRentalById(DataManager &dm, const string &rentalId);
 Bicycle* findBicycleById(DataManager &dm, const string &bikeId);
+string generateNextCustomerId(const DataManager &dm);
+string generateNextRentalId(const DataManager &dm);
 
 #endif //NIUBIKE_DATABASEENGINE_H

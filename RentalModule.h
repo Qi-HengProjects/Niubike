@@ -18,7 +18,4 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
 bool topUpRental(DataManager &dm, const string &rentalId, int extraHours);
 void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer);
 
-// Return bicycle function
-void returnBicycles(DataManager &dm, const Customer &currentCustomer);
-
 #endif
