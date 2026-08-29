@@ -1,5 +1,4 @@
 #include "Admin.h"
-#include "History.h"
 #include "Helpers.h"
 #include "DatabaseEngine.h"
 #include <iostream>
@@ -10,6 +9,12 @@
 #include <algorithm>
 
 using namespace std;
+
+static string truncateField(const string &s, size_t maxLen) {
+    if (s.length() <= maxLen) return s;
+    if (maxLen <= 3) return s.substr(0, maxLen);
+    return s.substr(0, maxLen - 3) + "...";
+}
 
 // Helper function to update bicycle status within Bike Maintenance
 static void updateBikeMaintenanceStatus(DataManager &dm) {
@@ -127,9 +132,10 @@ void admin(DataManager &dm)
         cout << getCenteredString("3. Bike Maintenance", 165) << endl;
         cout << getCenteredString("4. Rental Log      ", 165) << endl;
         cout << getCenteredString("5. Inventory       ", 165) << endl;
-        cout << getCenteredString("6. Exit            ", 165) << endl;
-        cout << getCenteredString("Option:   ", 165);
-
+        cout << getCenteredString("6. Customer Records", 165) << endl;
+        cout << getCenteredString("7. Exit            ", 165) << endl;
+        cout << getCenteredString("Choice: ", 165);
+            
         int adminOpt;
         if (!(cin >> adminOpt)) {
             cin.clear();
@@ -162,14 +168,17 @@ void admin(DataManager &dm)
                     }
                 }
 
+                ostringstream valSales;
+                valSales << "RM" << fixed << setprecision(2) << totalSales;
+
                 stringstream ssSales;
-                ssSales << left << setw(28) << "Total Revenue:" << "RM" << fixed << setprecision(2) << totalSales;
+                ssSales << left << setw(28) << "Total Revenue:" << right << setw(10) << valSales.str();
 
                 stringstream ssOrders;
-                ssOrders << left << setw(28) << "Total Orders in Record:" << dm.rentals.size();
+                ssOrders << left << setw(28) << "Total Orders in Record:" << right << setw(10) << dm.rentals.size();
 
                 stringstream ssPaid;
-                ssPaid << left << setw(28) << "Paid Orders:" << paidCount;
+                ssPaid << left << setw(28) << "Paid Orders:" << right << setw(10) << paidCount;
 
                 cout << getCenteredString(lineDouble, 165) << endl;
                 cout << getCenteredString("VIEW SALES", 165) << endl;
@@ -418,9 +427,51 @@ void admin(DataManager &dm)
                     }
                 }
 
+                // ---- 2D Array: Bike Type x Status breakdown matrix ----
+                const string bikeTypes[5] = { "Regular", "Two Seater", "E-Bike", "Kids Bike", "City Bike" };
+                const string statuses[5]  = { "Available", "Rented", "Maintenance", "Repair", "Retired" };
+                int typeStatusMatrix[5][5] = {0}; // rows = bikeTypes, columns = statuses
+
+                for (const auto &b : dm.bicycles) {
+                    int typeIdx = -1, statusIdx = -1;
+
+                    for (int i = 0; i < 5; i++) {
+                        if (b.bikeType == bikeTypes[i]) { typeIdx = i; break; }
+                    }
+                    for (int j = 0; j < 5; j++) {
+                        if (b.status == statuses[j]) { statusIdx = j; break; }
+                    }
+
+                    if (typeIdx != -1 && statusIdx != -1) {
+                        typeStatusMatrix[typeIdx][statusIdx]++;
+                    }
+                }
+
                 cout << getCenteredString(lineDouble, 165) << endl;
-                cout << endl;
-                cout << getCenteredString("Press Enter to return to admin menu...", 165);
+                cout << getCenteredString("BIKE TYPE x STATUS BREAKDOWN", 165) << endl;
+                cout << getCenteredString(lineDouble, 165) << endl;
+                
+                string matrixBorder  = string(79, '=');
+                string matrixDivider = string(79, '-');
+
+                stringstream matrixHeaderSS;
+                matrixHeaderSS << left << setw(14) << "Type";
+                for (int j = 0; j < 5; j++) {
+                    matrixHeaderSS << setw(13) << statuses[j];
+                }
+                cout << getCenteredString(matrixHeaderSS.str(), 165) << endl;
+                cout << getCenteredString(matrixDivider, 165) << endl;
+
+                for (int i = 0; i < 5; i++) {
+                    stringstream matrixRowSS;
+                    matrixRowSS << left << setw(14) << bikeTypes[i];
+                    for (int j = 0; j < 5; j++) {
+                        matrixRowSS << setw(13) << typeStatusMatrix[i][j];
+                    }
+                    cout << getCenteredString(matrixRowSS.str(), 165) << endl;
+                }
+
+                cout << getCenteredString(matrixBorder, 165) << endl;
 
                 string dummy;
                 getline(cin, dummy);
@@ -428,13 +479,67 @@ void admin(DataManager &dm)
             }
             case 6: {
                 clearScreen();
+                dm.customers.clear();
+                loadCustomers(dm.customers);
+
+                int memberCount = 0;
+                for (const auto &c : dm.customers) {
+                    if (c.isMember == "True" || c.isMember == "true") memberCount++;
+                }
+                
+                string custBorder  = string(82, '=');
+                string custDivider = string(82, '-');
+
+                cout << getCenteredString(custBorder, 165) << endl;
+                cout << getCenteredString("CUSTOMER RECORDS", 165) << endl;
+                cout << getCenteredString(custBorder, 165) << endl;
+                cout << getCenteredString("Total Customers: " + to_string(dm.customers.size()) + "   |   Members: " + to_string(memberCount), 165) << endl;
+                cout << getCenteredString(custDivider, 165) << endl;
+
+                stringstream headerSS;
+                headerSS << left
+                         << setw(10) << "Cust ID"
+                         << setw(20) << "Name"
+                         << setw(15) << "IC Number"
+                         << setw(15) << "Username"
+                         << setw(10) << "Member"
+                         << setw(12) << "Pay Status";
+                cout << getCenteredString(headerSS.str(), 165) << endl;
+                cout << getCenteredString(custDivider, 165) << endl;
+
+                if (dm.customers.empty()) {
+                    cout << getCenteredString("No customer records found.", 165) << endl;
+                } else {
+                    for (const auto &c : dm.customers) {
+                        stringstream rowSS;
+                        rowSS << left
+                              << setw(10) << truncateField(c.customerId, 8)
+                              << setw(20) << truncateField(c.customerName, 18)
+                              << setw(15) << truncateField(c.customerIc, 13)
+                              << setw(15) << truncateField(c.username, 13)
+                              << setw(10) << truncateField(c.isMember, 8)
+                              << setw(12) << truncateField(c.payStatus, 10);
+
+                        cout << getCenteredString(rowSS.str(), 165) << endl;
+                    }
+                }
+
+                cout << getCenteredString(custBorder, 165) << endl;
+                cout << endl;
+                cout << getCenteredString("Press Enter to return to admin menu...", 165);
+
+                string dummy;
+                getline(cin, dummy);
+                break;
+            }
+            case 7: {
+                clearScreen();
                 cout << "\nLogging out of Admin...\n";
                 cout << "Press Enter to continue...";
                 string dummy;
                 getline(cin, dummy);
                 return;
             }
-            
             default: {
                 cout << "\nInvalid option!" << endl;
                 cout << "Press Enter to continue...";
