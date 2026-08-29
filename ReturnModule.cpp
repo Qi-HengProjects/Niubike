@@ -47,40 +47,43 @@ void returnBikeLogic(DataManager &dm, const Customer &currentCustomer) {
     }
 
     if (returnable.empty()) {
-        cout << "No active rentals found for your account.\n\n";
-        cout << "Press Enter to return to main menu...";
+        cout << getCenteredString("No active rentals found for your account.", 165) << endl << endl;
+        cout << getCenteredString("Press Enter to return to main menu...", 165);
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
         cin.get();
         return;
     }
 
-    cout << "============================================" << endl;
-    cout << "                RETURN BIKES                " << endl;
-    cout << "============================================" << endl;
-    cout << "Your currently rented bike(s):\n\n";
+    cout << getCenteredString("============================================", 165) << endl;
+    cout << getCenteredString("                RETURN BIKES                ", 165) << endl;
+    cout << getCenteredString("============================================", 165) << endl;
+    cout << getCenteredString("Your currently rented bike(s):", 165) << endl << endl;
 
     for (size_t i = 0; i < returnable.size(); i++) {
         Bicycle *bike = findBicycleById(dm, returnable[i].bikeId);
         string bikeType = bike ? bike->bikeType : "Unknown";
-        cout << "  " << (i + 1) << ". Bike " << returnable[i].bikeId
+        
+        ostringstream line;
+        line << (i + 1) << ". Bike " << returnable[i].bikeId
              << " (" << bikeType << ")"
              << " | Rental " << returnable[i].rental->rentalId
-             << " | Payment: " << returnable[i].rental->paymentStatus << endl;
+             << " | Payment: " << returnable[i].rental->paymentStatus;
+        cout << getCenteredString(line.str(), 165) << endl;
     }
 
     int choice = 0;
-    cout << "\nWhich bike are you returning (0 to cancel)? ";
+    cout << endl << getCenteredString("Which bike are you returning (0 to cancel)? ", 165);
     while (true) {
         if (!(cin >> choice)) {
             cin.clear();
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
             checkEofOrExit();
-            cout << "Invalid input, try again: ";
+            cout << getCenteredString("Invalid input, try again: ", 165);
             continue;
         }
         if (choice == 0) {
-            cout << "\nReturn cancelled.\n";
-            cout << "\nPress Enter to return to main menu...";
+            cout << endl << getCenteredString("Return cancelled.", 165) << endl;
+            cout << endl << getCenteredString("Press Enter to return to main menu...", 165);
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
             cin.get();
             return;
@@ -88,17 +91,58 @@ void returnBikeLogic(DataManager &dm, const Customer &currentCustomer) {
         if (choice >= 1 && choice <= static_cast<int>(returnable.size())) {
             break;
         }
-        cout << "Invalid choice, try again: ";
+        cout << getCenteredString("Invalid choice, try again: ", 165);
     }
 
     Rental *r = returnable[choice - 1].rental;
     string bikeId = returnable[choice - 1].bikeId;
 
-    cout << "\nYou selected bike " << bikeId << " from Rental " << r->rentalId << ".\n";
+    ostringstream selMsg;
+    selMsg << "You selected bike " << bikeId << " from Rental " << r->rentalId << ".";
+    cout << endl << getCenteredString(selMsg.str(), 165) << endl;
+
+    // A bike can't be returned while its rental is still unpaid -- send the
+    // customer to settle payment first, then let them come back to return it.
+    if (trimString(r->paymentStatus) != "Paid") {
+        ostringstream unpaidMsg;
+        unpaidMsg << "[!] Rental " << r->rentalId << " for bike " << bikeId
+                  << " has not been paid yet. Payment must be settled before this bike can be returned.";
+        cout << endl << getCenteredString(unpaidMsg.str(), 165) << endl;
+        cout << getCenteredString("Redirecting to the Payment page...", 165) << endl << endl;
+        cout << getCenteredString("Press Enter to proceed to payment...", 165);
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cin.get();
+
+        processPayment(dm, currentCustomer);
+
+        // Re-check after the payment flow -- the user may have cancelled,
+        // paid for a different rental, or paid for this one.
+        if (trimString(r->paymentStatus) != "Paid") {
+            ostringstream failMsg;
+            failMsg << "[!] Payment was not completed for Rental " << r->rentalId
+                    << ". Please pay first, then return the bike again.";
+            cout << endl << getCenteredString(failMsg.str(), 165) << endl;
+            cout << endl << getCenteredString("Press Enter to return to main menu...", 165);
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cin.get();
+            return;
+        }
+
+        ostringstream successPayMsg;
+        successPayMsg << "[+] Payment settled for Rental " << r->rentalId
+                      << ". You can now proceed with returning bike " << bikeId << ".";
+        cout << endl << getCenteredString(successPayMsg.str(), 165) << endl;
+        cout << getCenteredString("Press Enter to continue...", 165);
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cin.get();
+    }
 
     int confirm = 0;
     do {
-        cout << "\nAre you returning this bike?\n1. Yes\n2. No\nOption: ";
+        cout << endl << getCenteredString("Are you returning this bike?", 165) << endl;
+        cout << getCenteredString("1. Yes", 165) << endl;
+        cout << getCenteredString("2. No", 165) << endl;
+        cout << getCenteredString("Option: ", 165);
         if (!(cin >> confirm)) {
             cin.clear();
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
@@ -142,7 +186,9 @@ void returnBikeLogic(DataManager &dm, const Customer &currentCustomer) {
         saveBicycles(dm.bicycles);
         saveRentals(dm.rentals);
 
-        cout << "\n[+] Bike " << bikeId << " returned successfully!" << endl;
+        ostringstream returnSuccessMsg;
+        returnSuccessMsg << "[+] Bike " << bikeId << " returned successfully!";
+        cout << endl << getCenteredString(returnSuccessMsg.str(), 165) << endl;
 
         // Only offer a deposit refund for this bike if the rental (as it now
         // stands) has no outstanding balance; otherwise send the customer to
@@ -154,24 +200,28 @@ void returnBikeLogic(DataManager &dm, const Customer &currentCustomer) {
         if (stillOwesMoney) {
             ostringstream ssDue;
             ssDue << fixed << setprecision(2) << max(balanceDue, 0.0);
-            cout << "[!] You have an outstanding balance of $" << ssDue.str()
-                 << " on Rental " << r->rentalId
-                 << " (deposit is only refundable once fully paid)." << endl;
-            cout << "Redirecting to the Payment page...\n\n";
-            cout << "Press Enter to proceed to payment...";
+            ostringstream balMsg;
+            balMsg << "[!] You have an outstanding balance of $" << ssDue.str()
+                   << " on Rental " << r->rentalId
+                   << " (deposit is only refundable once fully paid).";
+            cout << getCenteredString(balMsg.str(), 165) << endl;
+            cout << getCenteredString("Redirecting to the Payment page...", 165) << endl << endl;
+            cout << getCenteredString("Press Enter to proceed to payment...", 165);
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
             cin.get();
             processPayment(dm, currentCustomer);
             return;
         } else {
-            cout << "[+] Please claim your refundable deposit for this bike: $"
-                 << fixed << setprecision(2) << DEPOSIT_PER_BIKE << endl;
+            ostringstream depMsg;
+            depMsg << "[+] Please claim your refundable deposit for this bike: $"
+                   << fixed << setprecision(2) << DEPOSIT_PER_BIKE;
+            cout << getCenteredString(depMsg.str(), 165) << endl;
         }
     } else {
-        cout << "\nReturn cancelled. Your rental remains active." << endl;
+        cout << endl << getCenteredString("Return cancelled. Your rental remains active.", 165) << endl;
     }
 
-    cout << "\nPress Enter to return to main menu...";
+    cout << endl << getCenteredString("Press Enter to return to main menu...", 165);
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
     cin.get();
 }

@@ -193,32 +193,54 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
     clearScreen();
 
     string border  = "===============================================================================";
-    string divider = "-----------+--------------+------------------+----------+----------+-----------";
+    string divider = "-----------+---------+-------------+-------------------+----------+----------+-----------";
 
     cout << getCenteredString(border, 165) << endl;
     cout << getCenteredString("CART", 165) << endl;
     cout << getCenteredString(border, 165) << endl;
 
     ostringstream headerSS;
-    headerSS << " " << left << setw(7) << "Bike ID"
-             << "| " << setw(13) << "Category"
+    headerSS << " " << left << setw(10) << "Rental ID"
+             << "| " << setw(7) << "Bike ID"
+             << "| " << setw(11) << "Category"
              << "| " << setw(17) << "Rate ($/hr)"
-             << "| " << setw(9) << "Hours"
-             << "| " << setw(9) << "Deposit"
+             << "| " << setw(8) << "Hours"
+             << "| " << setw(8) << "Deposit"
              << "| " << "Line Total ($)";
     cout << getCenteredString(headerSS.str(), 165) << endl;
     cout << getCenteredString(divider, 165) << endl;
+
+    // Each bike gets its OWN Rental record (and therefore its own Rental ID),
+    // instead of grouping every bike from this checkout under a single shared
+    // rental. dm.rentals is updated inside the loop so generateNextRentalId()
+    // sees the previous bike's new record and hands out the next sequential ID.
+    vector<string> newRentalIds;
 
     for (size_t i = 0; i < assignedBikeIds.size(); i++) {
         double lineTotal = assignedRates[i] * hours;
         subtotal += lineTotal;
 
+        Rental newR;
+        newR.rentalId = generateNextRentalId(dm);
+        newR.rentalDuration = to_string(hours) + " hours";
+        newR.paymentStatus = "Pending";
+        newR.rentingStatus = "Active";
+        newR.rentingPrice = lineTotal;
+        newR.deposit = DEPOSIT_PER_BIKE;
+        newR.amountPaid = 0.0;
+        newR.custId = currentCustomer.customerId;
+        newR.bikeIdsStr = { assignedBikeIds[i] };
+
+        dm.rentals.push_back(newR);
+        newRentalIds.push_back(newR.rentalId);
+
         ostringstream rowSS;
-        rowSS << " " << left << setw(7) << assignedBikeIds[i]
-              << "| " << setw(13) << assignedCategories[i]
+        rowSS << " " << left << setw(10) << newR.rentalId
+              << "| " << setw(7) << assignedBikeIds[i]
+              << "| " << setw(11) << assignedCategories[i]
               << "| $" << setw(16) << fixed << setprecision(2) << assignedRates[i]
-              << "| " << setw(2) << hours << " hrs   "
-              << "| $" << setw(8) << fixed << setprecision(2) << DEPOSIT_PER_BIKE
+              << "| " << setw(2) << hours << " hrs "
+              << "| $" << setw(7) << fixed << setprecision(2) << DEPOSIT_PER_BIKE
               << "| $" << fixed << setprecision(2) << lineTotal;
 
         cout << getCenteredString(rowSS.str(), 165) << endl;
@@ -240,21 +262,16 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
     cout << getCenteredString(ssGrand.str(), 165) << endl;
     cout << getCenteredString(border, 165) << endl << endl;
 
-    Rental newR;
-    newR.rentalId = generateNextRentalId(dm);
-    newR.rentalDuration = to_string(hours) +  " hours";
-    newR.paymentStatus = "Pending";
-    newR.rentingStatus = "Active";
-    newR.rentingPrice  = subtotal;
-    newR.deposit = totalDeposit;
-    newR.amountPaid = 0.0;   
-    newR.custId = currentCustomer.customerId;
-    newR.bikeIdsStr = assignedBikeIds;
-
-    dm.rentals.push_back(newR);
     saveRentals(dm.rentals);
 
-    cout << getCenteredString("[+] Rental confirmed! Status updated in database. Please make your payment at the payment page.", 165) << endl;
+    string idsJoined;
+    for (size_t i = 0; i < newRentalIds.size(); i++) {
+        idsJoined += newRentalIds[i];
+        if (i + 1 < newRentalIds.size()) idsJoined += ", ";
+    }
+
+    cout << getCenteredString("[+] Rental confirmed! Assigned Rental ID(s): " + idsJoined, 165) << endl;
+    cout << getCenteredString("Each bike has its own Rental ID -- use it for top-ups, payment, and returns.", 165) << endl;
     cout << getCenteredString("Press Enter to return to main menu...", 165);
     cin.get(); 
 }
@@ -346,50 +363,35 @@ void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer) {
         return;
     }
 
-    // Display formatted table of active rentals
+    // Display formatted table of active rentals. Each Rental now belongs to
+    // exactly one bike, so this is a single straightforward pass -- no more
+    // nested re-printing of the header/rows for every rental in the list.
     ostringstream headerSS;
     headerSS << " " << left << setw(10) << "Rental ID"
-             << "| " << setw(25) << "Assigned Bike(s)"
+             << "| " << setw(25) << "Assigned Bike"
              << "| " << setw(19) << "Current Duration"
              << "| " << setw(15) << "Payment Status";
     cout << getCenteredString(headerSS.str(), 165) << "\n";
     cout << getCenteredString(divider, 165) << "\n";
 
     for (const auto *r : activeRentals) {
-        string bikeList;
-        for (size_t i = 0; i < r->bikeIdsStr.size(); ++i) {
-            bikeList += r->bikeIdsStr[i];
-            if (i + 1 < r->bikeIdsStr.size()) bikeList += ", ";
+        if (r->bikeIdsStr.empty()) {
+            ostringstream rowSS;
+            rowSS << " " << left << setw(10) << r->rentalId
+                  << "| " << setw(25) << "-"
+                  << "| " << setw(19) << r->rentalDuration
+                  << "| " << setw(15) << r->paymentStatus;
+            cout << getCenteredString(rowSS.str(), 165) << "\n";
+            continue;
         }
-        if (bikeList.empty()) bikeList = "-";
 
-        ostringstream headerSS;
-        headerSS << " " << left << setw(10) << "Rental ID"
-                 << "| " << setw(25) << "Assigned Bike"
-                 << "| " << setw(19) << "Current Duration"
-                 << "| " << setw(15) << "Payment Status";
-        cout << getCenteredString(headerSS.str(), 165) << "\n";
-        cout << getCenteredString(divider, 165) << "\n";
-        
-        for (const auto *r : activeRentals) {
-            if (r->bikeIdsStr.empty()) {
-                ostringstream rowSS;
-                rowSS << " " << left << setw(10) << r->rentalId
-                      << "| " << setw(25) << "-"
-                      << "| " << setw(19) << r->rentalDuration
-                      << "| " << setw(15) << r->paymentStatus;
-                cout << getCenteredString(rowSS.str(), 165) << "\n";
-                continue;
-            }
-
-            for (const string &bikeId : r->bikeIdsStr) {
-                ostringstream rowSS;
-                rowSS << " " << left << setw(10) << r->rentalId
-                      << "| " << setw(25) << bikeId
-                      << "| " << setw(19) << r->rentalDuration
-                      << "| " << setw(15) << r->paymentStatus;
-                cout << getCenteredString(rowSS.str(), 165) << "\n";
-            }
+        for (const string &bikeId : r->bikeIdsStr) {
+            ostringstream rowSS;
+            rowSS << " " << left << setw(10) << r->rentalId
+                  << "| " << setw(25) << bikeId
+                  << "| " << setw(19) << r->rentalDuration
+                  << "| " << setw(15) << r->paymentStatus;
+            cout << getCenteredString(rowSS.str(), 165) << "\n";
         }
     }
     cout << getCenteredString(border, 165) << "\n\n";

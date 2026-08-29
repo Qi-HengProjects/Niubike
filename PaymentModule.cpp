@@ -37,7 +37,7 @@ int showPaymentGateway(double grandTotal) {
     return methodChoice;
 }
 
-void showPaymentSuccess(const string &transactionId, double amountPaid) {
+void showPaymentSuccess(const string &transactionId, double amountPaid, double change) {
     clearScreen();
 
     string border = "============================================";
@@ -46,12 +46,16 @@ void showPaymentSuccess(const string &transactionId, double amountPaid) {
     cout << getCenteredString("PAYMENT SUCCESSFUL", 165) << endl;
     cout << getCenteredString(border, 165) << endl << endl;
 
-    ostringstream ssTx, ssPaid;
+    ostringstream ssTx, ssPaid, ssChange;
     ssTx << "Transaction ID : " << transactionId;
     ssPaid << "Total Paid     : $" << fixed << setprecision(2) << amountPaid;
+    ssChange << "Change Given   : $" << fixed << setprecision(2) << change;
 
     cout << getCenteredString(ssTx.str(), 165) << endl;
     cout << getCenteredString(ssPaid.str(), 165) << endl;
+    if (change > 0.005) {
+        cout << getCenteredString(ssChange.str(), 165) << endl;
+    }
     cout << getCenteredString("Status         : CONFIRMED", 165) << endl << endl;
 
     cout << getCenteredString(border, 165) << endl;
@@ -151,11 +155,11 @@ void paymentLogic(DataManager &dm, int methodChoice, double amountDue, const Cus
 
     Rental &r = *rPtr;
     double amountPaid = 0.0, change = 0.0;
-    bool success = false;
+    PaymentOutcome outcome = PaymentOutcome::FAILED;
 
     switch (methodChoice) {
         case 1: {
-            cout << "\n" << getCenteredString("Input the amount paid: $", 165);
+            cout << "\n" << getCenteredString("Input the amount paid (0 to cancel): $", 165);
             while (true) {
                 if (!(cin >> amountPaid)) {
                     cin.clear();
@@ -163,42 +167,82 @@ void paymentLogic(DataManager &dm, int methodChoice, double amountDue, const Cus
                     cout << getCenteredString("Invalid amount! Please enter a number: $", 165);
                     continue;
                 }
+                if (amountPaid == 0) {
+                    outcome = PaymentOutcome::CANCELLED;
+                    break;
+                }
                 if (amountPaid < amountDue) {
                     ostringstream ssErr;
-                    ssErr << "Insufficient amount! Minimum due is $" << fixed << setprecision(2) << amountDue << ". Try again: $";
+                    ssErr << "Insufficient amount! Minimum due is $" << fixed << setprecision(2) << amountDue << ". Try again (0 to cancel): $";
                     cout << getCenteredString(ssErr.str(), 165);
                     continue;
                 }
+
+                // Simple change-back math: whatever was handed over beyond the
+                // amount due goes back to the customer as change. (Shown on the
+                // final success screen -- printing it here would just get wiped
+                // out by the clearScreen() in showPaymentSuccess().)
+                change = amountPaid - amountDue;
+                outcome = PaymentOutcome::SUCCESS;
                 break;
             }
-
-            change = amountPaid - amountDue;
-            ostringstream ssChange;
-            ssChange << "Change: $" << fixed << setprecision(2) << change;
-            cout << getCenteredString(ssChange.str(), 165) << endl;
-            success = true;
             break;
         }
         case 2:
-            cout << "\n" << getCenteredString("Scan the QR code below to make the payment.", 165) << endl;
-            success = true;
+        case 3: {
+            string methodName = (methodChoice == 2) ? "eWallet" : "Card";
+            if (methodChoice == 2) {
+                cout << "\n" << getCenteredString("Scan the QR code below to make the payment.", 165) << endl;
+            } else {
+                cout << "\n" << getCenteredString("Please wave or insert your card in the POS machine.", 165) << endl;
+            }
+
+            // Real terminals can decline a transaction -- ask for the actual
+            // outcome instead of assuming every attempt succeeds.
+            cout << getCenteredString("Was the " + methodName + " transaction approved?", 165) << endl;
+            cout << getCenteredString("1. Yes, approved", 165) << endl;
+            cout << getCenteredString("2. No, declined/failed", 165) << endl;
+            cout << getCenteredString("Option: ", 165);
+
+            int confirm;
+            while (true) {
+                if (!(cin >> confirm)) {
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                    cout << getCenteredString("Invalid input! Enter 1 or 2: ", 165);
+                    continue;
+                }
+                if (confirm == 1 || confirm == 2) break;
+                cout << getCenteredString("Invalid input! Enter 1 or 2: ", 165);
+            }
+
+            outcome = (confirm == 1) ? PaymentOutcome::SUCCESS : PaymentOutcome::FAILED;
             break;
-        case 3:
-            cout << "\n" << getCenteredString("Please wave or insert your card in the POS machine.", 165) << endl;
-            success = true;
-            break;
+        }
         default:
             cout << "\n" << getCenteredString("Invalid payment choice.", 165) << endl;
+            outcome = PaymentOutcome::FAILED;
             break;
     }
 
-    if (success) {
-        r.paymentStatus = "Paid";
-        r.amountPaid = r.rentingPrice + r.deposit;   // fully settle the current balance
-        saveRentals(dm.rentals);
-        string transactionId = "TXN-" + r.rentalId;
-        showPaymentSuccess(transactionId, amountDue);
-        return;
+    // The DB is only ever touched here, on the SUCCESS branch. FAILED and
+    // CANCELLED fall through untouched -- paymentStatus stays "Pending" and
+    // the rental keeps showing up in the customer's pending-payment list.
+    switch (outcome) {
+        case PaymentOutcome::SUCCESS: {
+            r.paymentStatus = "Paid";
+            r.amountPaid = r.rentingPrice + r.deposit;   // fully settle the current balance
+            saveRentals(dm.rentals);
+            string transactionId = "TXN-" + r.rentalId;
+            showPaymentSuccess(transactionId, amountDue, change);
+            return;
+        }
+        case PaymentOutcome::FAILED:
+            cout << "\n" << getCenteredString("[!] Payment failed. Rental " + r.rentalId + " remains Pending -- try again from the Payment page.", 165) << endl;
+            break;
+        case PaymentOutcome::CANCELLED:
+            cout << "\n" << getCenteredString("Payment cancelled. Rental " + r.rentalId + " remains Pending.", 165) << endl;
+            break;
     }
 
     cout << "\n" << getCenteredString("Press Enter to continue...", 165);
