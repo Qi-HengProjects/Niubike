@@ -6,6 +6,7 @@
 #include "PaymentModule.h"
 #include "ReturnModule.h"
 #include "Admin.h"
+#include "LoyaltyModule.h"
 #include <iostream>
 #include <limits>
 #include <algorithm>
@@ -250,17 +251,18 @@ int login(DataManager &dm, Customer &currentCustomer) {
     }
 }
 
-void menu(DataManager &dm, const Customer &currentCustomer)
+void menu(DataManager &dm, Customer &currentCustomer)
 {
     while (true) {
         clearScreen();
         const string menuText = R"(
-    1. Rent       
-    2. Top Up Time
-    3. Return Bike
-    4. Payment    
-    5. History    
-    6. Exit       
+    1. Rent            
+    2. Top Up Time     
+    3. Return Bike     
+    4. Payment         
+    5. History         
+    6. Loyalty Program 
+    7. Exit            
     )";
 
         printCenteredBlock(menuText, 165);
@@ -299,6 +301,9 @@ void menu(DataManager &dm, const Customer &currentCustomer)
                 displayUserHistory(dm, currentCustomer.customerId);
                 break;
             case 6:
+                handleLoyaltyMenu(dm, currentCustomer);
+                break;
+            case 7:
                 cout << "\nLogging out...\n";
                 cout << "Press Enter to continue...";
                 cin.ignore(numeric_limits<streamsize>::max(), '\n');

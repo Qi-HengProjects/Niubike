@@ -2,12 +2,14 @@
 #include "DatabaseEngine.h"
 #include "PaymentModule.h"
 #include "Helpers.h"
+#include "LoyaltyModule.h"
 #include <iostream>
 #include <vector>
 #include <string>
 #include <limits>
 #include <algorithm>
 #include <iomanip>
+#include <ctime>
 #include <sstream>
 
 using namespace std;
@@ -187,17 +189,31 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
     saveBicycles(dm.bicycles);
 
     double subtotal = 0.0;
+    double totalDiscount = 0.0;
     const double DEPOSIT_PER_BIKE = 15.00;
     int totalBikes = static_cast<int>(assignedBikeIds.size());
+
+    // Loyalty discount is looked up once and applied to every line -- it's
+    // based on the customer's tier at the moment of checkout.
+    MembershipInfo memberInfo = getMembershipInfo(dm, currentCustomer);
+    time_t nowTs = time(nullptr);
 
     clearScreen();
 
     string border  = "===============================================================================";
-    string divider = "-----------+---------+-------------+-------------------+----------+----------+-----------";
+    string divider = "-----------+---------+-------------+-------------------+----------+----------+-----------+-----------";
 
     cout << getCenteredString(border, 165) << endl;
     cout << getCenteredString("CART", 165) << endl;
     cout << getCenteredString(border, 165) << endl;
+
+    if (memberInfo.isMember && memberInfo.discountPercent > 0.0) {
+        ostringstream ssMember;
+        ssMember << "[Loyalty] " << memberInfo.tierName << " member -- "
+                  << fixed << setprecision(0) << (memberInfo.discountPercent * 100)
+                  << "% off rental rates applied below.";
+        cout << getCenteredString(ssMember.str(), 165) << endl << endl;
+    }
 
     ostringstream headerSS;
     headerSS << " " << left << setw(10) << "Rental ID"
@@ -206,6 +222,7 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
              << "| " << setw(17) << "Rate ($/hr)"
              << "| " << setw(8) << "Hours"
              << "| " << setw(8) << "Deposit"
+             << "| " << setw(9) << "Discount"
              << "| " << "Line Total ($)";
     cout << getCenteredString(headerSS.str(), 165) << endl;
     cout << getCenteredString(divider, 165) << endl;
@@ -217,8 +234,12 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
     vector<string> newRentalIds;
 
     for (size_t i = 0; i < assignedBikeIds.size(); i++) {
-        double lineTotal = assignedRates[i] * hours;
+        double rawLineTotal = assignedRates[i] * hours;
+        double discountAmount = rawLineTotal * memberInfo.discountPercent;
+        double lineTotal = rawLineTotal - discountAmount;
+
         subtotal += lineTotal;
+        totalDiscount += discountAmount;
 
         Rental newR;
         newR.rentalId = generateNextRentalId(dm);
@@ -230,6 +251,8 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
         newR.amountPaid = 0.0;
         newR.custId = currentCustomer.customerId;
         newR.bikeIdsStr = { assignedBikeIds[i] };
+        newR.checkoutTime = nowTs;
+        newR.originalBikeIdsStr = { assignedBikeIds[i] };
 
         dm.rentals.push_back(newR);
         newRentalIds.push_back(newR.rentalId);
@@ -241,6 +264,7 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
               << "| $" << setw(16) << fixed << setprecision(2) << assignedRates[i]
               << "| " << setw(2) << hours << " hrs "
               << "| $" << setw(7) << fixed << setprecision(2) << DEPOSIT_PER_BIKE
+              << "| $" << setw(8) << fixed << setprecision(2) << discountAmount
               << "| $" << fixed << setprecision(2) << lineTotal;
 
         cout << getCenteredString(rowSS.str(), 165) << endl;
@@ -257,6 +281,11 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
     ssGrand << "TOTAL AMOUNT DUE: $" << fixed << setprecision(2) << grandTotal;
 
     cout << getCenteredString(ssSub.str(), 135) << endl;
+    if (totalDiscount > 0.005) {
+        ostringstream ssSaved;
+        ssSaved << "Loyalty Savings (" << memberInfo.tierName << "): -$" << fixed << setprecision(2) << totalDiscount;
+        cout << getCenteredString(ssSaved.str(), 135) << endl;
+    }
     cout << getCenteredString(ssDep.str(), 135) << endl;
     cout << getCenteredString(border, 165) << endl;
     cout << getCenteredString(ssGrand.str(), 165) << endl;

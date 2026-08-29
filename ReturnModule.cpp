@@ -2,6 +2,7 @@
 #include "DatabaseEngine.h"
 #include "Helpers.h"
 #include "PaymentModule.h"
+#include "PenaltyModule.h"
 #include <iostream>
 #include <iomanip>
 #include <limits>
@@ -11,6 +12,14 @@
 #include <algorithm>
 
 using namespace std;
+
+// Parses the leading integer out of a "N hours" duration string.
+static int parsePlannedHours(const string &durationStr) {
+    int hours = 0;
+    stringstream ss(durationStr);
+    ss >> hours;
+    return hours;
+}
 
 // Must match DEPOSIT_PER_BIKE used in RentalModule.cpp when the rental was created.
 static const double DEPOSIT_PER_BIKE = 15.00;
@@ -62,12 +71,24 @@ void returnBikeLogic(DataManager &dm, const Customer &currentCustomer) {
     for (size_t i = 0; i < returnable.size(); i++) {
         Bicycle *bike = findBicycleById(dm, returnable[i].bikeId);
         string bikeType = bike ? bike->bikeType : "Unknown";
-        
+        double hourlyRate = bike ? bike->price : 0.0;
+
+        // Non-destructive preview so the customer knows what to expect before
+        // they commit to returning this particular bike.
+        int plannedHours = parsePlannedHours(returnable[i].rental->rentalDuration);
+        LateFeeResult preview = calculateLateFee(plannedHours, returnable[i].rental->checkoutTime, hourlyRate);
+
         ostringstream line;
         line << (i + 1) << ". Bike " << returnable[i].bikeId
              << " (" << bikeType << ")"
              << " | Rental " << returnable[i].rental->rentalId
              << " | Payment: " << returnable[i].rental->paymentStatus;
+        if (preview.isLate) {
+            line << " | [LATE by " << (int)preview.lateHours << "h -- est. fee $"
+                 << fixed << setprecision(2) << preview.feeAmount << "]";
+        } else {
+            line << " | [On Time]";
+        }
         cout << getCenteredString(line.str(), 165) << endl;
     }
 
@@ -161,6 +182,13 @@ void returnBikeLogic(DataManager &dm, const Customer &currentCustomer) {
             }
         }
 
+        // Compute the late-return penalty (if any) BEFORE the planned
+        // duration/cost bookkeeping below, since it depends on the original
+        // planned hours and the rental's checkout timestamp.
+        int hours = parsePlannedHours(r->rentalDuration);
+        LateFeeResult lateFee = calculateLateFee(hours, r->checkoutTime, hourlyRate);
+        bool wasFullyPaid = (trimString(r->paymentStatus) == "Paid");
+
         // Remove this bike from its rental's bike list (partial return);
         // the rest of that rental's bikes, if any, stay Active/returnable.
         r->bikeIdsStr.erase(
@@ -170,17 +198,34 @@ void returnBikeLogic(DataManager &dm, const Customer &currentCustomer) {
 
         // Work out this bike's share of the rental's cost/deposit so the
         // remaining rental total reflects only the bike(s) still out.
-        int hours = 0;
-        stringstream durSS(r->rentalDuration);
-        durSS >> hours;
         double costShare = hourlyRate * hours;
 
         r->rentingPrice = max(0.0, r->rentingPrice - costShare);
         r->deposit = max(0.0, r->deposit - DEPOSIT_PER_BIKE);
 
         // Once every bike from this rental has been returned, close it out.
-        if (r->bikeIdsStr.empty()) {
+        bool fullyClosed = r->bikeIdsStr.empty();
+        if (fullyClosed) {
             r->rentingStatus = "Returned";
+        }
+
+        // Apply the tiered late fee, if any, on top of whatever remains.
+        // A fresh charge on an already-Paid rental reopens it as Pending so
+        // it correctly shows up in the customer's outstanding-payments list.
+        if (lateFee.isLate) {
+            // amountPaid still holds whatever was collected for the ORIGINAL
+            // (now fully zeroed-out) rental price + deposit. If we don't also
+            // reset it here, the balance-due math further down (rentingPrice
+            // + deposit - amountPaid) would net that old payment against the
+            // brand-new late fee and wrongly look "already covered". Since
+            // this bike's booking is fully closing out and was already
+            // settled in full, that old payment has nothing left to offset
+            // against -- the late fee is a genuinely new, separate charge.
+            if (fullyClosed && wasFullyPaid) {
+                r->amountPaid = 0.0;
+            }
+            r->rentingPrice += lateFee.feeAmount;
+            r->paymentStatus = "Pending";
         }
 
         saveBicycles(dm.bicycles);
@@ -189,6 +234,15 @@ void returnBikeLogic(DataManager &dm, const Customer &currentCustomer) {
         ostringstream returnSuccessMsg;
         returnSuccessMsg << "[+] Bike " << bikeId << " returned successfully!";
         cout << endl << getCenteredString(returnSuccessMsg.str(), 165) << endl;
+
+        if (lateFee.isLate) {
+            ostringstream lateMsg1, lateMsg2;
+            lateMsg1 << "[!] This bike was returned " << (int)lateFee.lateHours
+                      << " hour(s) late (" << lateFee.tierLabel << ").";
+            lateMsg2 << "    Late fee charged: $" << fixed << setprecision(2) << lateFee.feeAmount;
+            cout << getCenteredString(lateMsg1.str(), 165) << endl;
+            cout << getCenteredString(lateMsg2.str(), 165) << endl;
+        }
 
         // Only offer a deposit refund for this bike if the rental (as it now
         // stands) has no outstanding balance; otherwise send the customer to

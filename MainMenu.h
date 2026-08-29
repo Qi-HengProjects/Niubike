@@ -10,6 +10,8 @@
 
 
 int login(DataManager &dm, Customer &currentCustomer);
-void menu(DataManager &dm, const Customer &currentCustomer);
+// Non-const so the Loyalty Program screen can flip isMember on for the
+// current session as soon as the customer joins, without requiring a re-login.
+void menu(DataManager &dm, Customer &currentCustomer);
 
 #endif // MAINMENU_H

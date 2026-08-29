@@ -22,6 +22,32 @@ static double safeStod(const string &field, const string &context, double fallba
 
 
 
+static long long safeStoll(const string &field, long long fallback = 0) {
+    if (field.empty()) return fallback;
+    try {
+        size_t consumed = 0;
+        long long value = stoll(field, &consumed);
+        return value;
+    } catch (const std::exception &e) {
+        return fallback;
+    }
+}
+
+// Splits a ';'-joined sub-field (bike ID lists) into a vector, trimming any
+// stray '\r' left over from Windows-authored files.
+static vector<string> splitBikeIds(const string &joined) {
+    vector<string> ids;
+    stringstream ss(joined);
+    string single;
+    while (getline(ss, single, ';')) {
+        if (!single.empty()) {
+            if (single.back() == '\r') single.pop_back();
+            if (!single.empty()) ids.push_back(single);
+        }
+    }
+    return ids;
+}
+
 static long long extractIdNumber(const string &id) {
     if (id.size() < 2) return -1;
     string digits = id.substr(1);
@@ -133,16 +159,23 @@ void loadRentals(vector<Rental> &rentals) {
             temp.deposit = safeStod(deposit, "rental " + id + " deposit");
             temp.amountPaid = safeStod(amount_paid, "rental " + id + " amountPaid");
             temp.custId = custId;
+            temp.bikeIdsStr = splitBikeIds(bikeIdsStr);
 
-            stringstream bikeSS(bikeIdsStr);
-            string singleBikeId;
+            // Newer optional columns (checkoutTime, originalBikeIdsStr). Older
+            // rows saved before this feature existed simply won't have them --
+            // getline returning false just leaves the strings empty, which the
+            // fallbacks below handle gracefully.
+            string checkoutTimeStr, originalBikeIdsRaw;
+            getline(ss, checkoutTimeStr, ',');
+            getline(ss, originalBikeIdsRaw, ',');
 
-            // Order MUST be: (1) Stream, (2) String variable, (3) Char delimiter
-            while (getline(bikeSS, singleBikeId, ';')) {
-                if (!singleBikeId.empty()) {
-                    if (singleBikeId.back() == '\r') singleBikeId.pop_back();
-                    temp.bikeIdsStr.push_back(singleBikeId);
-                }
+            temp.checkoutTime = static_cast<time_t>(safeStoll(checkoutTimeStr, 0));
+
+            temp.originalBikeIdsStr = splitBikeIds(originalBikeIdsRaw);
+            if (temp.originalBikeIdsStr.empty()) {
+                // Legacy row (or a rental returned before this field existed) --
+                // best available fallback is whatever bikes are still listed.
+                temp.originalBikeIdsStr = temp.bikeIdsStr;
             }
 
             rentals.push_back(temp);
@@ -203,6 +236,18 @@ void saveRentals(const vector<Rental> &rentals) {
             for (size_t i = 0; i < r.bikeIdsStr.size(); ++i) {
                 file << sanitizeForCsv(r.bikeIdsStr[i]);
                 if (i + 1 < r.bikeIdsStr.size()) {
+                    file << ';';
+                }
+            }
+
+            // checkoutTime: epoch seconds, used for late-fee calculation.
+            file << ',' << static_cast<long long>(r.checkoutTime) << ',';
+
+            // originalBikeIdsStr: permanent record of assigned bike(s), kept
+            // even after bikeIdsStr shrinks on return, for fleet analytics.
+            for (size_t i = 0; i < r.originalBikeIdsStr.size(); ++i) {
+                file << sanitizeForCsv(r.originalBikeIdsStr[i]);
+                if (i + 1 < r.originalBikeIdsStr.size()) {
                     file << ';';
                 }
             }

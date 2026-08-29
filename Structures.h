@@ -3,6 +3,7 @@
 # include <string>
 # include <chrono>
 # include <vector>
+# include <ctime>
 
 using namespace std;
 
@@ -24,6 +25,18 @@ struct Rental {
     double amountPaid = 0.0;
     string custId;
     vector<string> bikeIdsStr;
+
+    // When the rental was checked out (epoch seconds). Used by the late-return
+    // penalty calculator to measure real elapsed time against the planned
+    // duration. 0 means "unknown" (e.g. a rental saved before this feature
+    // existed) -- late fees are skipped for those rather than guessed.
+    time_t checkoutTime = 0;
+
+    // Permanent record of which bike(s) this rental was created for. Unlike
+    // bikeIdsStr (which shrinks as bikes are returned, and can end up empty),
+    // this never changes after checkout, so fleet/popularity analytics can
+    // still attribute historical rentals to a bike/category after return.
+    vector<string> originalBikeIdsStr;
 };
 
 struct Customer {

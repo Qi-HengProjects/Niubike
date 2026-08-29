@@ -22,4 +22,10 @@ add_executable(Niubike
         History.h
         Admin.cpp
         Admin.h
+        PenaltyModule.h
+        PenaltyModule.cpp
+        LoyaltyModule.h
+        LoyaltyModule.cpp
+        AnalyticsModule.h
+        AnalyticsModule.cpp
 )
