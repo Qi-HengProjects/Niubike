@@ -1,11 +1,14 @@
 #include "RentalModule.h"
 #include "DatabaseEngine.h"
+#include "PaymentModule.h"
 #include "Helpers.h"
 #include <iostream>
 #include <vector>
 #include <string>
 #include <limits>
 #include <algorithm>
+#include <iomanip>
+#include <sstream>
 
 using namespace std;
 
@@ -133,7 +136,6 @@ vector<int> rentalMenu(DataManager &dm) {
     }
 
     return selectedRent;
-    
 }
 
 void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int> &selectedRent) {
@@ -144,7 +146,6 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
 
     clearScreen();
 
-    // 1. Prompt for rental duration in hours
     int hours = 0;
     while (true) {
         cout << getCenteredString("=========================================================", 165) << endl;
@@ -153,7 +154,6 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
         cout << getCenteredString("Enter rental duration (in hours): ", 165);
         
         if (cin >> hours && hours > 0) {
-            // Clean up the newline left behind by 'cin >> hours' immediately
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
             break;
         }
@@ -162,10 +162,8 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
         cout << "\n[!] Invalid duration! Please enter a positive whole number.\n\n";
     }
 
-    // 2. Map option numbers to Category Names and Prices
     const string categoryNames[6] = { "", "Regular", "Two Seater", "E-Bike", "Kids Bike", "City Bike" };
 
-    // 3. Match selections to actual available bicycles in database and assign IDs
     vector<string> assignedBikeIds;
     vector<string> assignedCategories;
     vector<double> assignedRates;
@@ -186,7 +184,6 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
 
     saveBicycles(dm.bicycles);
 
-    // 4. Calculate Financials
     double subtotal = 0.0;
     const double DEPOSIT_PER_BIKE = 15.00;
     int totalBikes = static_cast<int>(assignedBikeIds.size());
@@ -241,7 +238,6 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
     cout << getCenteredString(ssGrand.str(), 165) << endl;
     cout << getCenteredString(border, 165) << endl << endl;
 
-    // Save rental to database
     Rental newR;
     newR.rentalId = "R" + to_string(dm.rentals.size() + 1);
     newR.rentalDuration = to_string(hours) +  " hours";
@@ -256,7 +252,6 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
     dm.rentals.push_back(newR);
     saveRentals(dm.rentals);
 
-    // Single prompt and pause to exit function
     cout << getCenteredString("[+] Rental confirmed! Status updated in database. Please make your payment at the payment page.", 165) << endl;
     cout << getCenteredString("Press Enter to return to main menu...", 165);
     cin.get(); 
@@ -325,11 +320,70 @@ bool topUpRental(DataManager &dm, const string &rentalId, int extraHours) {
 
 void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer) {
     clearScreen();
-    cout << "\n" << getCenteredString("--- Extend / Top-Up Rental Time ---", 165) << "\n\n";
+    string border  = "===============================================================================";
+    string divider = "------------+--------------------------+--------------------+------------------";
+
+    cout << getCenteredString(border, 165) << "\n";
+    cout << getCenteredString("ACTIVE RENTALS AVAILABLE FOR TOP-UP", 165) << "\n";
+    cout << getCenteredString(border, 165) << "\n\n";
+
+    // Gather active rentals for this customer
+    vector<Rental*> activeRentals;
+    for (auto &r : dm.rentals) {
+        if (trim(r.custId) == trim(currentCustomer.customerId) && trim(r.rentingStatus) == "Active") {
+            activeRentals.push_back(&r);
+        }
+    }
+
+    if (activeRentals.empty()) {
+        cout << getCenteredString("No active rentals found to top up.", 165) << "\n\n";
+        cout << getCenteredString(border, 165) << "\n";
+        cout << getCenteredString("Press Enter to return...", 165);
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cin.get();
+        return;
+    }
+
+    // Display formatted table of active rentals
+    ostringstream headerSS;
+    headerSS << " " << left << setw(10) << "Rental ID"
+             << "| " << setw(25) << "Assigned Bike(s)"
+             << "| " << setw(19) << "Current Duration"
+             << "| " << setw(15) << "Payment Status";
+    cout << getCenteredString(headerSS.str(), 165) << "\n";
+    cout << getCenteredString(divider, 165) << "\n";
+
+    for (const auto *r : activeRentals) {
+        string bikeList;
+        for (size_t i = 0; i < r->bikeIdsStr.size(); ++i) {
+            bikeList += r->bikeIdsStr[i];
+            if (i + 1 < r->bikeIdsStr.size()) bikeList += ", ";
+        }
+        if (bikeList.empty()) bikeList = "-";
+
+        ostringstream rowSS;
+        rowSS << " " << left << setw(10) << r->rentalId
+              << "| " << setw(25) << bikeList
+              << "| " << setw(19) << r->rentalDuration
+              << "| " << setw(15) << r->paymentStatus;
+        cout << getCenteredString(rowSS.str(), 165) << "\n";
+    }
+    cout << getCenteredString(border, 165) << "\n\n";
 
     string rentalId;
-    cout << getCenteredString("Enter Rental ID: ", 165);
+    cout << getCenteredString("Enter Rental ID to Top-Up (or 0 to cancel): ", 165);
     cin >> rentalId;
+
+    if (trim(rentalId) == "0") return;
+
+    Rental* record = findRentalById(dm, trim(rentalId));
+    if (!record || trim(record->custId) != trim(currentCustomer.customerId) || trim(record->rentingStatus) != "Active") {
+        cout << "\n" << getCenteredString("[Error] Invalid or inactive Rental ID selection.", 165) << "\n";
+        cout << getCenteredString("Press Enter to continue...", 165);
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cin.get();
+        return;
+    }
 
     int extraHours;
     cout << getCenteredString("Enter additional hours to add: ", 165);
@@ -339,14 +393,90 @@ void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer) {
         cout << getCenteredString("Invalid input! Enter additional hours to add: ", 165);
     }
 
-    Rental* record = findRentalById(dm, trim(rentalId));
-    if (record && trim(record->custId) != trim(currentCustomer.customerId)) {
-        cout << getCenteredString("[Error] That rental does not belong to your account.", 165) << "\n";
-    } else {
-        topUpRental(dm, trim(rentalId), extraHours);
-    }
+    topUpRental(dm, trim(rentalId), extraHours);
 
     cout << "\n" << getCenteredString("Press Enter to continue...", 165);
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
     cin.get();
+}
+
+void returnBicycles(DataManager &dm, const Customer &currentCustomer) {
+    clearScreen();
+    string border = "===============================================================================";
+
+    cout << getCenteredString(border, 165) << "\n";
+    cout << getCenteredString("RETURN BICYCLES", 165) << "\n";
+    cout << getCenteredString(border, 165) << "\n\n";
+
+    // Find active rentals for this customer
+    vector<Rental*> activeRentals;
+    for (auto &r : dm.rentals) {
+        if (trim(r.custId) == trim(currentCustomer.customerId) && trim(r.rentingStatus) == "Active") {
+            activeRentals.push_back(&r);
+        }
+    }
+
+    if (activeRentals.empty()) {
+        cout << getCenteredString("You have no active rentals to return.", 165) << "\n\n";
+        cout << getCenteredString("Press Enter to return...", 165);
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cin.get();
+        return;
+    }
+
+    for (size_t i = 0; i < activeRentals.size(); ++i) {
+        Rental *r = activeRentals[i];
+        string bikeList;
+        for (size_t j = 0; j < r->bikeIdsStr.size(); ++j) {
+            bikeList += r->bikeIdsStr[j];
+            if (j + 1 < r->bikeIdsStr.size()) bikeList += ", ";
+        }
+        
+        ostringstream ss;
+        ss << (i + 1) << ". Rental ID: " << r->rentalId << " | Bikes: " << bikeList << " | Status: " << r->paymentStatus;
+        cout << getCenteredString(ss.str(), 165) << "\n";
+    }
+
+    cout << "\n" << getCenteredString("Enter choice number to return (0 to cancel): ", 165);
+    int choice;
+    if (!(cin >> choice) || choice <= 0 || choice > static_cast<int>(activeRentals.size())) {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        return;
+    }
+
+    Rental *selected = activeRentals[choice - 1];
+
+    // 1. Mark renting status as Returned / Completed
+    selected->rentingStatus = "Returned";
+
+    // 2. Return all associated bicycles back to "Available"
+    for (const string &bId : selected->bikeIdsStr) {
+        Bicycle *b = findBicycleById(dm, bId);
+        if (b) {
+            b->status = "Available";
+        }
+    }
+
+    saveBicycles(dm.bicycles);
+    saveRentals(dm.rentals);
+
+    cout << "\n" << getCenteredString("[+] Bicycles returned successfully!", 165) << "\n";
+
+    // 3. Check if rental has a pending balance due
+    double balanceDue = (selected->rentingPrice + selected->deposit) - selected->amountPaid;
+    if (balanceDue > 0 || trim(selected->paymentStatus) == "Pending") {
+        cout << getCenteredString("[!] You have a pending balance of $" + to_string(balanceDue) + " for this rental.", 165) << "\n";
+        cout << getCenteredString("Redirecting directly to Payment Page...", 165) << "\n\n";
+        cout << getCenteredString("Press Enter to proceed to payment...", 165);
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cin.get();
+
+        // Direct redirect to payment module
+        processPayment(dm, currentCustomer);
+    } else {
+        cout << getCenteredString("Press Enter to continue...", 165);
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        cin.get();
+    }
 }

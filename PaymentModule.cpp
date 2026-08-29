@@ -71,11 +71,23 @@ Rental* selectPendingRental(DataManager &dm, vector<Rental*> &pending) {
 
     clearScreen();
 
-    string border = "===============================================================================";
+    string border  = "===============================================================================";
+    string divider = "-------+-----------+--------------------------+--------------------+-----------";
 
     cout << getCenteredString(border, 165) << endl;
     cout << getCenteredString("SELECT RENTAL TO PAY FOR", 165) << endl;
     cout << getCenteredString(border, 165) << endl << endl;
+
+    // Header - Column widths: 6 | 10 | 25 | 19 | 10
+    ostringstream headerSS;
+    headerSS << " " << left << setw(6) << "No."
+             << "| " << setw(10) << "Rental ID"
+             << "| " << setw(25) << "Assigned Bike(s)"
+             << "| " << setw(19) << "Duration"
+             << "| " << setw(10) << "Due ($)";
+
+    cout << getCenteredString(headerSS.str(), 165) << endl;
+    cout << getCenteredString(divider, 165) << endl;
 
     for (size_t i = 0; i < pending.size(); i++) {
         Rental *r = pending[i];
@@ -88,14 +100,21 @@ Rental* selectPendingRental(DataManager &dm, vector<Rental*> &pending) {
         }
         if (bikeList.empty()) bikeList = "-";
 
-        ostringstream ssRow;
-        ssRow << (i + 1) << ". Rental " << r->rentalId
-              << " | Bike(s): " << bikeList
-              << " | Duration: " << r->rentalDuration
-              << " | Due: $" << fixed << setprecision(2) << due;
+        ostringstream dueSS;
+        dueSS << "$" << fixed << setprecision(2) << due;
 
-        cout << getCenteredString(ssRow.str(), 165) << endl;
+        // Row - Matching Column widths: 6 | 10 | 25 | 19 | 10
+        ostringstream rowSS;
+        rowSS << " " << left << setw(6) << to_string(i + 1) + "."
+              << "| " << setw(10) << r->rentalId
+              << "| " << setw(25) << bikeList
+              << "| " << setw(19) << r->rentalDuration
+              << "| " << setw(10) << dueSS.str();
+
+        cout << getCenteredString(rowSS.str(), 165) << endl;
     }
+
+    cout << getCenteredString(divider, 165) << endl << endl;
 
     cout << endl;
     cout << getCenteredString("0. Cancel", 165) << endl << endl;
