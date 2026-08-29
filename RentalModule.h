@@ -18,4 +18,8 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
 bool topUpRental(DataManager &dm, const string &rentalId, int extraHours);
 void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer);
 
+// Cancels an Active, not-yet-overdue rental: releases its bike(s) back to
+// "Available" stock and marks the rental Cancelled/Refunded as appropriate.
+bool cancelRental(DataManager &dm, const string &rentalId);
+
 #endif

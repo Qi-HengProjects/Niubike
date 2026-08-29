@@ -162,13 +162,17 @@ int login(DataManager &dm, Customer &currentCustomer) {
                 }
 
                 while (true) {
-                    cout << getCenteredString("IC number: ", 170);
+                    cout << getCenteredString("IC number (12 digits, no dashes): ", 170);
                     getline(cin, customerIc);
                     customerIc = trim(customerIc);
                     if (customerIc.empty()) {
                         cout << "Error: IC cannot be empty.\n";
+                    } else if (customerIc.find('-') != string::npos) {
+                        cout << "Error: IC should not contain dashes -- digits only, e.g. 030115071234.\n";
                     } else if (!std::all_of(customerIc.begin(), customerIc.end(), ::isdigit)) {
                         cout << "Error: IC should only contain digits.\n";
+                    } else if (customerIc.length() != 12) {
+                        cout << "Error: IC must be exactly 12 digits long (yours has " << customerIc.length() << ").\n";
                     } else {
                         break;
                     }
@@ -257,7 +261,7 @@ void menu(DataManager &dm, Customer &currentCustomer)
         clearScreen();
         const string menuText = R"(
     1. Rent            
-    2. Top Up Time     
+    2. Top-Up / Cancel 
     3. Return Bike     
     4. Payment         
     5. History         

@@ -9,4 +9,4 @@ B008,Kids Bike,4,Rented,None
 B009,Kids Bike,4,Rented,None
 B010,Kids Bike,4,Rented,None
 B011,City Bike,7,Rented,None
-B012,City Bike,7,Maintenance,Under Inspection
+B012,City Bike,7,Available,None

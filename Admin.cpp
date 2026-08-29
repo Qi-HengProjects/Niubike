@@ -194,19 +194,22 @@ void admin(DataManager &dm)
 
                 int activeCount = 0;
                 int returnedCount = 0;
+                int cancelledCount = 0;
 
                 for (const auto &r : dm.rentals) {
                     if (r.rentingStatus == "Active" || r.rentingStatus == "Ongoing") {
                         activeCount++;
                     } else if (r.rentingStatus == "Returned" || r.rentingStatus == "Completed") {
                         returnedCount++;
+                    } else if (r.rentingStatus == "Cancelled") {
+                        cancelledCount++;
                     }
                 }
 
                 cout << getCenteredString(lineDouble, 165) << endl;
                 cout << getCenteredString("RENTAL STATUS", 165) << endl;
                 cout << getCenteredString(lineDouble, 165) << endl;
-                cout << getCenteredString("Active: " + to_string(activeCount) + "   |   Returned: " + to_string(returnedCount) + "   |   Total: " + to_string(dm.rentals.size()), 165) << endl;
+                cout << getCenteredString("Active: " + to_string(activeCount) + "   |   Returned: " + to_string(returnedCount) + "   |   Cancelled: " + to_string(cancelledCount) + "   |   Total: " + to_string(dm.rentals.size()), 165) << endl;
                 cout << getCenteredString(lineSingle, 165) << endl;
 
                 stringstream headerSS;

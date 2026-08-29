@@ -40,6 +40,12 @@ void showFleetAnalytics(DataManager &dm) {
     }
 
     for (const auto &r : dm.rentals) {
+        // A cancelled booking never actually used its bike -- don't let it
+        // inflate popularity/usage counts. (Revenue is already naturally
+        // excluded since it's gated on paymentStatus == "Paid" below, and a
+        // cancelled rental is never "Paid".)
+        if (trimStr(r.rentingStatus) == "Cancelled") continue;
+
         // Prefer the permanent original assignment so a bike's history
         // survives even after it has been returned and stripped out of
         // bikeIdsStr by ReturnModule's partial-return logic.

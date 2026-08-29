@@ -3,6 +3,7 @@
 #include "PaymentModule.h"
 #include "Helpers.h"
 #include "LoyaltyModule.h"
+#include "PenaltyModule.h"
 #include <iostream>
 #include <vector>
 #include <string>
@@ -366,13 +367,87 @@ bool topUpRental(DataManager &dm, const string &rentalId, int extraHours) {
     return true;
 }
 
+bool cancelRental(DataManager &dm, const string &rentalId) {
+    Rental* record = findRentalById(dm, rentalId);
+    if (!record) {
+        cout << getCenteredString("[Error] Rental ID " + rentalId + " not found.", 165) << "\n";
+        return false;
+    }
+
+    if (trim(record->rentingStatus) != "Active") {
+        cout << getCenteredString("[Error] Only an active rental (not yet returned or already cancelled) can be cancelled.", 165) << "\n";
+        return false;
+    }
+
+    if (record->bikeIdsStr.empty()) {
+        cout << getCenteredString("[Error] No bicycles associated with this rental.", 165) << "\n";
+        return false;
+    }
+
+    // A rental that's already overdue must go through Return Bike instead --
+    // otherwise a customer could "cancel" a very late rental just to dodge
+    // the tiered late fee it would otherwise be charged.
+    int plannedHours = 0;
+    {
+        stringstream durSS(record->rentalDuration);
+        durSS >> plannedHours;
+    }
+    Bicycle* firstBike = findBicycleById(dm, record->bikeIdsStr[0]);
+    double hourlyRate = firstBike ? firstBike->price : 0.0;
+    LateFeeResult lateCheck = calculateLateFee(plannedHours, record->checkoutTime, hourlyRate);
+    if (lateCheck.isLate) {
+        cout << getCenteredString("[Error] This rental is already overdue and can no longer be cancelled.", 165) << "\n";
+        cout << getCenteredString("Please use Return Bike instead to settle the late fee and close it out.", 165) << "\n";
+        return false;
+    }
+
+    bool wasPaid = (trim(record->paymentStatus) == "Paid");
+    double refundAmount = wasPaid ? (record->rentingPrice + record->deposit) : 0.0;
+
+    // Release every bike tied to this rental back into the available pool --
+    // cancelling a booking must free up stock immediately, exactly like a
+    // real return does.
+    for (const string &bikeId : record->bikeIdsStr) {
+        Bicycle* bike = findBicycleById(dm, bikeId);
+        if (bike) {
+            bike->status = "Available";
+        }
+    }
+    saveBicycles(dm.bicycles);
+
+    record->bikeIdsStr.clear();
+    record->rentingStatus = "Cancelled";
+    record->paymentStatus = wasPaid ? "Refunded" : "Cancelled";
+    record->rentingPrice = 0.0;
+    record->deposit = 0.0;
+    record->amountPaid = wasPaid ? refundAmount : 0.0; // kept as a record of what's owed back
+
+    saveRentals(dm.rentals);
+
+    cout << "\n";
+    cout << getCenteredString("========================================", 165) << "\n";
+    cout << getCenteredString("        RENTAL CANCELLED                ", 165) << "\n";
+    cout << getCenteredString("========================================", 165) << "\n";
+    cout << getCenteredString("Rental ID       : " + record->rentalId, 165) << "\n";
+    if (wasPaid) {
+        ostringstream ssRefund;
+        ssRefund << fixed << setprecision(2) << refundAmount;
+        cout << getCenteredString("Refund Due      : $" + ssRefund.str() + " (please claim this at the counter)", 165) << "\n";
+    } else {
+        cout << getCenteredString("No payment had been made for this rental -- nothing to refund.", 165) << "\n";
+    }
+    cout << getCenteredString("The bike(s) from this booking are back in stock immediately.", 165) << "\n";
+    cout << getCenteredString("========================================", 165) << "\n";
+    return true;
+}
+
 void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer) {
     clearScreen();
     string border  = "===============================================================================";
     string divider = "------------+--------------------------+--------------------+------------------";
 
     cout << getCenteredString(border, 165) << "\n";
-    cout << getCenteredString("ACTIVE RENTALS AVAILABLE FOR TOP-UP", 165) << "\n";
+    cout << getCenteredString("ACTIVE RENTALS -- TOP-UP OR CANCEL", 165) << "\n";
     cout << getCenteredString(border, 165) << "\n\n";
 
     // Gather active rentals for this customer
@@ -384,7 +459,7 @@ void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer) {
     }
 
     if (activeRentals.empty()) {
-        cout << getCenteredString("No active rentals found to top up.", 165) << "\n\n";
+        cout << getCenteredString("No active rentals found to manage.", 165) << "\n\n";
         cout << getCenteredString(border, 165) << "\n";
         cout << getCenteredString("Press Enter to return...", 165);
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
@@ -426,8 +501,14 @@ void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer) {
     cout << getCenteredString(border, 165) << "\n\n";
 
     string rentalId;
-    cout << getCenteredString("Enter Rental ID to Top-Up (or 0 to cancel): ", 165);
+    cout << getCenteredString("Enter Rental ID to Manage (or 0 to cancel): ", 165);
     cin >> rentalId;
+    if (!cin) {
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        checkEofOrExit();
+        return;
+    }
 
     if (trim(rentalId) == "0") return;
 
@@ -440,16 +521,60 @@ void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer) {
         return;
     }
 
-    int extraHours;
-    cout << getCenteredString("Enter additional hours to add: ", 165);
-    while (!(cin >> extraHours)) {
+    cout << "\n" << getCenteredString("Rental " + record->rentalId + " selected. What would you like to do?", 165) << "\n\n";
+    cout << getCenteredString("1. Top Up (Add Hours)", 165) << "\n";
+    cout << getCenteredString("2. Cancel This Rental", 165) << "\n";
+    cout << getCenteredString("0. Back", 165) << "\n\n";
+    cout << getCenteredString("Option: ", 165);
+
+    int actionChoice;
+    while (!(cin >> actionChoice)) {
         cin.clear();
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
         checkEofOrExit();
-        cout << getCenteredString("Invalid input! Enter additional hours to add: ", 165);
+        cout << getCenteredString("Invalid input! Enter 0, 1, or 2: ", 165);
     }
 
-    topUpRental(dm, trim(rentalId), extraHours);
+    if (actionChoice == 0) {
+        return;
+    }
+
+    if (actionChoice == 1) {
+        int extraHours;
+        cout << getCenteredString("Enter additional hours to add: ", 165);
+        while (!(cin >> extraHours)) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            checkEofOrExit();
+            cout << getCenteredString("Invalid input! Enter additional hours to add: ", 165);
+        }
+        topUpRental(dm, trim(rentalId), extraHours);
+    } else if (actionChoice == 2) {
+        int confirm = 0;
+        cout << getCenteredString("Are you sure you want to cancel this rental?", 165) << "\n";
+        cout << getCenteredString("1. Yes, cancel it", 165) << "\n";
+        cout << getCenteredString("2. No, keep it", 165) << "\n";
+        cout << getCenteredString("Option: ", 165);
+        while (true) {
+            if (!(cin >> confirm)) {
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                checkEofOrExit();
+                cout << getCenteredString("Invalid input! Enter 1 or 2: ", 165);
+                continue;
+            }
+            if (confirm == 1 || confirm == 2) break;
+            cout << getCenteredString("Invalid choice! Enter 1 or 2: ", 165);
+        }
+
+        if (confirm == 1) {
+            cancelRental(dm, trim(rentalId));
+        } else {
+            cout << "\n" << getCenteredString("Cancellation aborted. Your rental remains active.", 165) << "\n";
+        }
+    } else {
+        cout << "\n" << getCenteredString("Invalid choice. Nothing was changed.", 165) << "\n";
+    }
 
     cout << "\n" << getCenteredString("Press Enter to continue...", 165);
     cin.ignore(numeric_limits<streamsize>::max(), '\n');

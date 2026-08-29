@@ -32,8 +32,20 @@ int showPaymentGateway(double grandTotal) {
 
     cout << getCenteredString("Option: ", 165);
 
-    int methodChoice;
-    cin >> methodChoice;
+    int methodChoice = -1;
+    while (true) {
+        if (!(cin >> methodChoice)) {
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            checkEofOrExit();
+            cout << getCenteredString("Invalid input! Enter a number (0-3): ", 165);
+            continue;
+        }
+        if (methodChoice >= 0 && methodChoice <= 3) {
+            break;
+        }
+        cout << getCenteredString("Invalid choice! Enter a number (0-3): ", 165);
+    }
     return methodChoice;
 }
 

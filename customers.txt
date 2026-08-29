@@ -2,5 +2,4 @@ C1,f,f,None,New account created,f,f
 C2,j,j,None,New account created,j,j
 C3,jay,jay,None,New account created,jay,jaya
 C4,jay,jay,None,New account created,testj,1234
-C5,jay,123,None,jay,1234,True
-C6,ja,02,None,test,1234,False
+C5,jay,123,None,jay,1234,False
