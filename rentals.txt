@@ -1,7 +1,8 @@
-R2,2 hours,Paid,Active,20,15,35,C5,B005
-R3,2 hours,Paid,Active,24,15,39,C5,B007
-R4,2 hours,Paid,Active,8,15,23,C5,B008
-R5,4 hours,Paid,Active,16,15,31,C5,B009
-R6,2 hours,Paid,Active,14,15,29,C5,B011
-R7,1 hours,Paid,Active,5,15,20,C5,B003
-R8,1 hours,Paid,Active,4,15,19,C5,B010
+R2,2 hours,Paid,Returned,0,0,35,C5,,0,B005,0
+R3,2 hours,Paid,Returned,0,0,39,C5,,0,B007,0
+R4,2 hours,Paid,Returned,0,0,23,C5,,0,B008,0
+R5,4 hours,Paid,Returned,0,0,31,C5,,0,B009,0
+R6,2 hours,Paid,Returned,0,0,29,C5,,0,B011,0
+R7,1 hours,Paid,Returned,0,0,20,C5,,0,B003,0
+R8,1 hours,Paid,Returned,0,0,19,C5,,0,B010,0
+R9,2 hours,Cancelled,Cancelled,0,0,0,C5,,1788067465,B012,0
