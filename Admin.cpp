@@ -1,5 +1,4 @@
 #include "Admin.h"
-#include "History.h"
 #include "Helpers.h"
 #include "DatabaseEngine.h"
 #include "AnalyticsModule.h"
@@ -12,36 +11,42 @@
 
 using namespace std;
 
-// Helper function to update bicycle status within Bike Maintenance
 static void updateBikeMaintenanceStatus(DataManager &dm) {
     const string lineSingle = "----------------------------------------------------------------------";
     
+    // Display visual section header
     cout << "\n" << getCenteredString("==================================================", 165) << endl;
     cout << getCenteredString("UPDATE BICYCLE MAINTENANCE & STATUS", 165) << endl;
     cout << getCenteredString("==================================================", 165) << endl << endl;
 
+    // Prompt user for target Bike ID
     string targetId;
     cout << getCenteredString("Enter Bike ID to update (or 0 to cancel): ", 165);
     cin >> targetId;
 
+    // Allow user to abort operation
     if (targetId == "0") return;
 
+    // Search for the requested bike in the vector using a lambda predicate
     auto it = find_if(dm.bicycles.begin(), dm.bicycles.end(), [&](const Bicycle &b) {
         return b.bikeId == targetId;
     });
 
+    // Handle ID not found error
     if (it == dm.bicycles.end()) {
         cout << "\n" << getCenteredString("[Error] Bike ID not found!", 165) << endl;
         cout << getCenteredString("Press Enter to continue...", 165);
-        string dummy;
+        string dummy; // placeholder var to wait for user to press enter
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
         getline(cin, dummy);
         return;
     }
 
+    // Display current bike metrics
     cout << "\n" << getCenteredString("Current Status : " + it->status, 165) << endl;
     cout << getCenteredString("Current Condition: " + it->maintenance, 165) << endl << endl;
 
+    // Display available status update actions
     cout << getCenteredString("Select Action:", 165) << endl;
     cout << getCenteredString("1. Set Status to Active / Available", 165) << endl;
     cout << getCenteredString("2. Set Status to Under Maintenance ", 165) << endl;
@@ -51,6 +56,7 @@ static void updateBikeMaintenanceStatus(DataManager &dm) {
     cout << getCenteredString("0. Cancel                          ", 165) << endl << endl;
     cout << getCenteredString("Option: ", 165);
 
+    // Read and validate action choice
     int choice;
     if (!(cin >> choice) || choice == 0) {
         cin.clear();
@@ -58,6 +64,7 @@ static void updateBikeMaintenanceStatus(DataManager &dm) {
         return;
     }
 
+    // Apply status update based on selection
     switch (choice) {
         case 1:
             it->status = "Available";
@@ -76,6 +83,7 @@ static void updateBikeMaintenanceStatus(DataManager &dm) {
             it->maintenance = "none";
             break;
         case 5: {
+            // Clear remaining input buffer before reading custom string
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
             cout << "\n" << getCenteredString("Enter New Maintenance Note: ", 165);
             string note;
@@ -90,6 +98,7 @@ static void updateBikeMaintenanceStatus(DataManager &dm) {
             break;
     }
 
+    // Persist changes to external database/file storage
     saveBicycles(dm.bicycles);
     cout << "\n" << getCenteredString("[+] Bicycle " + targetId + " maintenance status updated successfully!", 165) << endl;
     cout << getCenteredString("Press Enter to continue...", 165);
@@ -98,11 +107,13 @@ static void updateBikeMaintenanceStatus(DataManager &dm) {
     getline(cin, dummy);
 }
 
+
 void admin(DataManager &dm)
 {
     while (true) {
         clearScreen();
 
+        // Banner ASCII Art
         const string asciiArt = R"(
       __      _________   ___      ___   __    _____  ___
     /""\     |"       "\|"  \    /"  | |"  \ (\"    \|"  \
@@ -123,6 +134,7 @@ void admin(DataManager &dm)
         printCenteredBlock(adminBox, 165);
         cout << endl;
 
+        // Render main admin navigation options
         cout << getCenteredString("1. View Sales        ", 165) << endl;
         cout << getCenteredString("2. Rental Status     ", 165) << endl;
         cout << getCenteredString("3. Bike Maintenance  ", 165) << endl;
@@ -132,10 +144,11 @@ void admin(DataManager &dm)
         cout << getCenteredString("7. Exit              ", 165) << endl;
         cout << getCenteredString("Option:   ", 165);
 
+        // Input validation for menu selection
         int adminOpt;
         if (!(cin >> adminOpt)) {
-            cin.clear();
-            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            cin.clear(); // Reset cin fail state
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Flush bad characters
             cout << "\nInvalid choice! Please enter a valid number." << endl;
             cout << "Press Enter to continue...";
             string dummy;
@@ -143,20 +156,23 @@ void admin(DataManager &dm)
             continue;
         }
 
+        // Flush trailing newline from stream before proceeding
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
         const string lineDouble = "======================================================================";
         const string lineSingle = "----------------------------------------------------------------------";
 
         switch (adminOpt) {
-            case 1: {
+            // View Sales & Total Revenue
+            case 1: { 
                 clearScreen();
                 dm.rentals.clear();
-                loadRentals(dm.rentals);
+                loadRentals(dm.rentals); // Reload fresh records from disk
 
                 double totalSales = 0.0;
                 int paidCount = 0;
 
+                // Aggregate financial statistics for paid orders
                 for (const auto &r : dm.rentals) {
                     if (r.paymentStatus == "Paid" || r.paymentStatus == "PAID") {
                         totalSales += r.rentingPrice;
@@ -164,6 +180,7 @@ void admin(DataManager &dm)
                     }
                 }
 
+                // Format row entries using stringstream for fixed width alignment
                 stringstream ssSales;
                 ssSales << left << setw(28) << "Total Revenue:" << "RM" << fixed << setprecision(2) << totalSales;
 
@@ -173,6 +190,7 @@ void admin(DataManager &dm)
                 stringstream ssPaid;
                 ssPaid << left << setw(28) << "Paid Orders:" << paidCount;
 
+                // Output revenue summary block
                 cout << getCenteredString(lineDouble, 165) << endl;
                 cout << getCenteredString("VIEW SALES", 165) << endl;
                 cout << getCenteredString(lineDouble, 165) << endl;
@@ -187,6 +205,7 @@ void admin(DataManager &dm)
                 getline(cin, dummy);
                 break;
             }
+            // Active / Historical Rental Status Overview
             case 2: {
                 clearScreen();
                 dm.rentals.clear();
@@ -196,6 +215,7 @@ void admin(DataManager &dm)
                 int returnedCount = 0;
                 int cancelledCount = 0;
 
+                // Calculate rental status breakdown
                 for (const auto &r : dm.rentals) {
                     if (r.rentingStatus == "Active" || r.rentingStatus == "Ongoing") {
                         activeCount++;
@@ -206,12 +226,14 @@ void admin(DataManager &dm)
                     }
                 }
 
+                // Print header and summary counts
                 cout << getCenteredString(lineDouble, 165) << endl;
                 cout << getCenteredString("RENTAL STATUS", 165) << endl;
                 cout << getCenteredString(lineDouble, 165) << endl;
                 cout << getCenteredString("Active: " + to_string(activeCount) + "   |   Returned: " + to_string(returnedCount) + "   |   Cancelled: " + to_string(cancelledCount) + "   |   Total: " + to_string(dm.rentals.size()), 165) << endl;
                 cout << getCenteredString(lineSingle, 165) << endl;
 
+                // Construct and display formatted table header
                 stringstream headerSS;
                 headerSS << left
                          << setw(11) << "Rental ID"
@@ -226,7 +248,9 @@ void admin(DataManager &dm)
                 if (dm.rentals.empty()) {
                     cout << getCenteredString("No rental records found.", 165) << endl;
                 } else {
+                    // Output each rental entry row
                     for (const auto &r : dm.rentals) {
+                        // Comma-separate list of bike IDs assigned to rental
                         string bikesJoined = "";
                         for (size_t i = 0; i < r.bikeIdsStr.size(); ++i) {
                             bikesJoined += r.bikeIdsStr[i];
@@ -236,6 +260,7 @@ void admin(DataManager &dm)
                         }
                         if (bikesJoined.empty()) bikesJoined = "N/A";
 
+                        // Format individual row items
                         stringstream rowSS;
                         rowSS << left
                               << setw(11) << r.rentalId
@@ -257,17 +282,19 @@ void admin(DataManager &dm)
                 getline(cin, dummy);
                 break;
             }
-            case 3: { // BIKE MAINTENANCE & STATUS
+            // Bike Maintenance Status Sub-Menu
+            case 3: { 
                 bool stayInMaint = true;
                 while (stayInMaint) {
                     clearScreen();
                     dm.bicycles.clear();
-                    loadBicycles(dm.bicycles);
+                    loadBicycles(dm.bicycles); // Load current bicycle inventory
 
                     int maintCount = 0;
                     int availCount = 0;
                     int rentedCount = 0;
 
+                    // Tally status totals across bicycle fleet
                     for (const auto &b : dm.bicycles) {
                         if (b.status == "Maintenance" || b.status == "Repair") {
                             maintCount++;
@@ -278,12 +305,14 @@ void admin(DataManager &dm)
                         }
                     }
 
+                    // Display summary banner
                     cout << getCenteredString(lineDouble, 165) << endl;
                     cout << getCenteredString("BIKE MAINTENANCE & STATUS", 165) << endl;
                     cout << getCenteredString(lineDouble, 165) << endl;
                     cout << getCenteredString("In Maintenance: " + to_string(maintCount) + "   |   Available: " + to_string(availCount) + "   |   Rented: " + to_string(rentedCount), 165) << endl;
                     cout << getCenteredString(lineSingle, 165) << endl;
 
+                    // Print formatted maintenance table columns
                     stringstream headerSS;
                     headerSS << left
                              << setw(10) << "Bike ID"
@@ -297,6 +326,7 @@ void admin(DataManager &dm)
                     if (dm.bicycles.empty()) {
                         cout << getCenteredString("No bicycle records found.", 165) << endl;
                     } else {
+                        // Render each bike record in table
                         for (const auto &b : dm.bicycles) {
                             stringstream rowSS;
                             rowSS << left
@@ -310,6 +340,7 @@ void admin(DataManager &dm)
                         }
                     }
 
+                    // Sub-menu navigation
                     cout << getCenteredString(lineDouble, 165) << endl << endl;
                     cout << getCenteredString("1. Change Maintenance Status / Notes ", 165) << endl;
                     cout << getCenteredString("0. Return to Admin Menu              ", 165) << endl << endl;
@@ -323,13 +354,14 @@ void admin(DataManager &dm)
                     }
 
                     if (subOpt == 1) {
-                        updateBikeMaintenanceStatus(dm);
+                        updateBikeMaintenanceStatus(dm); // Invoke update flow
                     } else if (subOpt == 0) {
-                        stayInMaint = false;
+                        stayInMaint = false; // Exit sub-menu loop
                     }
                 }
                 break;
             }
+            // Rental Audit Log View
             case 4: {
                 clearScreen();
                 dm.rentals.clear();
@@ -341,6 +373,7 @@ void admin(DataManager &dm)
                 cout << getCenteredString("Total Historical Records Logged: " + to_string(dm.rentals.size()), 165) << endl;
                 cout << getCenteredString(lineSingle, 165) << endl;
 
+                // Define audit table column headers
                 stringstream headerSS;
                 headerSS << left
                          << setw(10) << "Log ID"
@@ -355,6 +388,7 @@ void admin(DataManager &dm)
                 if (dm.rentals.empty()) {
                     cout << getCenteredString("No rental audit logs available.", 165) << endl;
                 } else {
+                    // Iterate and render rental history
                     for (const auto &r : dm.rentals) {
                         stringstream rowSS;
                         rowSS << left
@@ -377,6 +411,7 @@ void admin(DataManager &dm)
                 getline(cin, dummy);
                 break;
             }
+            // Bicycle Inventory Overview
             case 5: {
                 clearScreen();
                 dm.bicycles.clear();
@@ -386,6 +421,7 @@ void admin(DataManager &dm)
                 int totalAvailable = 0;
                 int totalRented = 0;
 
+                // Calculate stock vs. rented counts
                 for (const auto &b : dm.bicycles) {
                     if (b.status == "Available") totalAvailable++;
                     else if (b.status == "Rented") totalRented++;
@@ -397,6 +433,7 @@ void admin(DataManager &dm)
                 cout << getCenteredString("Total Bikes: " + to_string(totalBikes) + "   |   In Stock: " + to_string(totalAvailable) + "   |   On Rent: " + to_string(totalRented), 165) << endl;
                 cout << getCenteredString(lineSingle, 165) << endl;
 
+                // Inventory display table headers
                 stringstream headerSS;
                 headerSS << left
                          << setw(10) << "Bike ID"
@@ -410,6 +447,7 @@ void admin(DataManager &dm)
                 if (dm.bicycles.empty()) {
                     cout << getCenteredString("No inventory items found in database.", 165) << endl;
                 } else {
+                    // Output inventory row entries
                     for (const auto &b : dm.bicycles) {
                         stringstream rowSS;
                         rowSS << left
@@ -431,19 +469,22 @@ void admin(DataManager &dm)
                 getline(cin, dummy);
                 break;
             }
+            // Delegate to Analytics Module
             case 6: {
                 showFleetAnalytics(dm);
                 break;
             }
+            // Admin Logout
             case 7: {
                 clearScreen();
                 cout << "\nLogging out of Admin...\n";
                 cout << "Press Enter to continue...";
                 string dummy;
                 getline(cin, dummy);
-                return;
+                return; // Return back to main system caller loop
             }
             
+            // Fallback for out-of-range menu options
             default: {
                 cout << "\nInvalid option!" << endl;
                 cout << "Press Enter to continue...";

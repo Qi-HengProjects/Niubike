@@ -2,11 +2,8 @@
 #include <iomanip>
 #include <limits>
 #include <sstream>
-#include "MainMenu.h"
 #include "DatabaseEngine.h"
 #include "Helpers.h"
-#include "History.h"
-#include "RentalModule.h"
 #include "PaymentModule.h"
 
 using namespace std;
@@ -16,14 +13,17 @@ int showPaymentGateway(double grandTotal) {
 
     string border = "============================================";
 
+    // Display gateway title banner
     cout << getCenteredString(border, 165) << endl;
     cout << getCenteredString("PAYMENT GATEWAY", 165) << endl;
     cout << getCenteredString(border, 165) << endl << endl;
 
+    // Display total amount due
     ostringstream ssAmount;
     ssAmount << "Amount Payable: $" << fixed << setprecision(2) << grandTotal;
     cout << getCenteredString(ssAmount.str(), 165) << endl << endl;
 
+    // Display supported payment methods
     cout << getCenteredString("Select Payment Method:", 165) << endl;
     cout << getCenteredString("1. Cash               ", 165) << endl;
     cout << getCenteredString("2. Touch 'n Go eWallet", 165) << endl;
@@ -33,6 +33,7 @@ int showPaymentGateway(double grandTotal) {
     cout << getCenteredString("Option: ", 165);
 
     int methodChoice = -1;
+    // Input loop to ensure valid numerical choice selection
     while (true) {
         if (!(cin >> methodChoice)) {
             cin.clear();
@@ -54,10 +55,12 @@ void showPaymentSuccess(const string &transactionId, double amountPaid, double c
 
     string border = "============================================";
 
+    // Render success header banner
     cout << getCenteredString(border, 165) << endl;
     cout << getCenteredString("PAYMENT SUCCESSFUL", 165) << endl;
     cout << getCenteredString(border, 165) << endl << endl;
 
+    // Format transaction metrics
     ostringstream ssTx, ssPaid, ssChange;
     ssTx << "Transaction ID : " << transactionId;
     ssPaid << "Total Paid     : $" << fixed << setprecision(2) << amountPaid;
@@ -65,11 +68,13 @@ void showPaymentSuccess(const string &transactionId, double amountPaid, double c
 
     cout << getCenteredString(ssTx.str(), 165) << endl;
     cout << getCenteredString(ssPaid.str(), 165) << endl;
+    // Display change details if change was calculated
     if (change > 0.005) {
         cout << getCenteredString(ssChange.str(), 165) << endl;
     }
     cout << getCenteredString("Status         : CONFIRMED", 165) << endl << endl;
 
+    // Navigation pause before returning to main menu
     cout << getCenteredString(border, 165) << endl;
     cout << getCenteredString("Press Enter to return to main menu...", 165);
 
@@ -77,8 +82,6 @@ void showPaymentSuccess(const string &transactionId, double amountPaid, double c
     cin.get();
 }
 
-// Lets the customer choose which pending rental they want to pay for,
-// instead of always settling whichever one happens to be first in the list.
 Rental* selectPendingRental(DataManager &dm, vector<Rental*> &pending) {
     // Only one pending rental -- nothing to choose, pay it directly.
     if (pending.size() == 1) {
@@ -105,10 +108,12 @@ Rental* selectPendingRental(DataManager &dm, vector<Rental*> &pending) {
     cout << getCenteredString(headerSS.str(), 165) << endl;
     cout << getCenteredString(divider, 165) << endl;
 
+    // Iterate through pending rentals to display detailed row items
     for (size_t i = 0; i < pending.size(); i++) {
         Rental *r = pending[i];
         double due = (r->rentingPrice + r->deposit) - r->amountPaid;
 
+        // Construct comma-separated list of assigned bicycle IDs
         string bikeList;
         for (size_t j = 0; j < r->bikeIdsStr.size(); j++) {
             bikeList += r->bikeIdsStr[j];
@@ -136,6 +141,7 @@ Rental* selectPendingRental(DataManager &dm, vector<Rental*> &pending) {
     cout << getCenteredString("0. Cancel", 165) << endl << endl;
     cout << getCenteredString("Select rental to pay (enter number): ", 165);
 
+    // Prompt and validate customer selection choice
     int choice;
     while (true) {
         if (!(cin >> choice)) {
@@ -145,10 +151,10 @@ Rental* selectPendingRental(DataManager &dm, vector<Rental*> &pending) {
             continue;
         }
         if (choice == 0) {
-            return nullptr;
+            return nullptr; // Return null on cancellation
         }
         if (choice >= 1 && choice <= static_cast<int>(pending.size())) {
-            return pending[choice - 1];
+            return pending[choice - 1]; // Return chosen pointer
         }
         cout << getCenteredString("Invalid choice! Try again: ", 165);
     }
@@ -157,6 +163,7 @@ Rental* selectPendingRental(DataManager &dm, vector<Rental*> &pending) {
 void paymentLogic(DataManager &dm, int methodChoice, double amountDue, const Customer &currentCustomer, const string &rentalId) {
     Rental *rPtr = findRentalById(dm, rentalId);
 
+    // Validate rental existence, ownership, and pending status
     if (!rPtr || rPtr->custId != currentCustomer.customerId || rPtr->paymentStatus != "Pending") {
         cout << "\n" << getCenteredString("[Error] Rental not found or already paid.", 165) << endl;
         cout << "\n" << getCenteredString("Press Enter to continue...", 165);
@@ -169,7 +176,9 @@ void paymentLogic(DataManager &dm, int methodChoice, double amountDue, const Cus
     double amountPaid = 0.0, change = 0.0;
     PaymentOutcome outcome = PaymentOutcome::FAILED;
 
+    // Process payment method mechanics
     switch (methodChoice) {
+        // Option 1: Cash Payment Method
         case 1: {
             cout << "\n" << getCenteredString("Input the amount paid (0 to cancel): $", 165);
             while (true) {
@@ -200,6 +209,7 @@ void paymentLogic(DataManager &dm, int methodChoice, double amountDue, const Cus
             }
             break;
         }
+        // Option 2 & 3: Electronic / Card POS Payment Method
         case 2:
         case 3: {
             string methodName = (methodChoice == 2) ? "eWallet" : "Card";
@@ -244,7 +254,7 @@ void paymentLogic(DataManager &dm, int methodChoice, double amountDue, const Cus
         case PaymentOutcome::SUCCESS: {
             r.paymentStatus = "Paid";
             r.amountPaid = r.rentingPrice + r.deposit;   // fully settle the current balance
-            saveRentals(dm.rentals);
+            saveRentals(dm.rentals); // Persist updated payment state to file
             string transactionId = "TXN-" + r.rentalId;
             showPaymentSuccess(transactionId, amountDue, change);
             return;
@@ -271,6 +281,7 @@ void processPayment(DataManager &dm, const Customer &currentCustomer) {
         }
     }
 
+    // Handle case where customer has no outstanding payments
     if (pending.empty()) {
         clearScreen();
         cout << getCenteredString("No pending payments found for your account.", 165) << "\n\n";
@@ -280,16 +291,20 @@ void processPayment(DataManager &dm, const Customer &currentCustomer) {
         return;
     }
 
+    // Allow user to select target pending rental
     Rental *selected = selectPendingRental(dm, pending);
     if (!selected) {
         return; // user cancelled selection
     }
 
+    // Calculate total balance due for selected rental
     double totalDue = (selected->rentingPrice + selected->deposit) - selected->amountPaid;
     string selectedRentalId = selected->rentalId;
 
+    // Display gateway and obtain user method choice
     int choice = showPaymentGateway(totalDue);
 
+    // Trigger payment processing logic if not cancelled
     if (choice != 0) {
         paymentLogic(dm, choice, totalDue, currentCustomer, selectedRentalId);
     }

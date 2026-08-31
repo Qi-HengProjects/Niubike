@@ -4,7 +4,6 @@
 #include <sstream>
 #include <iostream>
 #include <string>
-#include <stdexcept>
 #include <algorithm>
 using namespace std;
 

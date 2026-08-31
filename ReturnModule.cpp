@@ -213,14 +213,6 @@ void returnBikeLogic(DataManager &dm, const Customer &currentCustomer) {
         // A fresh charge on an already-Paid rental reopens it as Pending so
         // it correctly shows up in the customer's outstanding-payments list.
         if (lateFee.isLate) {
-            // amountPaid still holds whatever was collected for the ORIGINAL
-            // (now fully zeroed-out) rental price + deposit. If we don't also
-            // reset it here, the balance-due math further down (rentingPrice
-            // + deposit - amountPaid) would net that old payment against the
-            // brand-new late fee and wrongly look "already covered". Since
-            // this bike's booking is fully closing out and was already
-            // settled in full, that old payment has nothing left to offset
-            // against -- the late fee is a genuinely new, separate charge.
             if (fullyClosed && wasFullyPaid) {
                 r->amountPaid = 0.0;
             }
@@ -243,11 +235,7 @@ void returnBikeLogic(DataManager &dm, const Customer &currentCustomer) {
             cout << getCenteredString(lateMsg1.str(), 165) << endl;
             cout << getCenteredString(lateMsg2.str(), 165) << endl;
         }
-
-        // Only offer a deposit refund for this bike if the rental (as it now
-        // stands) has no outstanding balance; otherwise send the customer to
-        // the payment page instead, matching how the rest of the app treats
-        // "Pending" rentals.
+        
         double balanceDue = (r->rentingPrice + r->deposit) - r->amountPaid;
         bool stillOwesMoney = (trimString(r->paymentStatus) != "Paid") && balanceDue > 0.005;
 

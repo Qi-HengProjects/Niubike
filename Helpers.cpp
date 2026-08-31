@@ -11,6 +11,7 @@ void clearScreen() {
 #endif
 }
 
+//print stuff with padding
 string getCenteredString(const string& text, int width) {
     int padding = (width - static_cast<int>(text.length())) / 2;
     if (padding > 0) {
@@ -19,6 +20,7 @@ string getCenteredString(const string& text, int width) {
     return text;
 }
 
+//print a block of stuff with padding
 void printCenteredBlock(const string& text, int width) {
     stringstream ss(text);
     string line;
@@ -27,12 +29,15 @@ void printCenteredBlock(const string& text, int width) {
     }
 }
 
+// Prevents infinite loop execution when input streams close or scripts hit end-of-file.
 void checkEofOrExit() {
     if (cin.eof()) {
         cout << "\n[!] Input stream closed unexpectedly. Exiting to avoid hanging...\n";
         exit(0);
     }
 }
+
+//Replaces commas (',') with semicolons (';') and strips line breaks ('\n', '\r') to avoid breaking row or column structure.
 
 string sanitizeForCsv(const string& field) {
     string clean;

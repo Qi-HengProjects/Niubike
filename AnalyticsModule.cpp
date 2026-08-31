@@ -19,6 +19,7 @@ static string trimStr(const string &s) {
 
 void showFleetAnalytics(DataManager &dm) {
     clearScreen();
+    // Fresh reload of bicycles and rental logs from persistent storage
     dm.bicycles.clear();
     loadBicycles(dm.bicycles);
     dm.rentals.clear();
@@ -27,11 +28,13 @@ void showFleetAnalytics(DataManager &dm) {
     string border     = "======================================================================";
     string lineSingle = "----------------------------------------------------------------------";
 
+    // Hash maps for metric aggregations grouped by bicycle category or bike ID
     map<string, int> typeTotal, typeRentedNow, typeTimesRented;
     map<string, double> typeRevenue;
     map<string, int> bikeRentalCount;
     map<string, string> bikeIdToType;
 
+    // Populate baseline fleet counts and initialize individual bike lookup records
     for (const auto &b : dm.bicycles) {
         typeTotal[b.bikeType]++;
         if (trimStr(b.status) == "Rented") typeRentedNow[b.bikeType]++;
@@ -39,6 +42,7 @@ void showFleetAnalytics(DataManager &dm) {
         bikeRentalCount[b.bikeId] = 0; // ensure every bike appears, even with zero rentals
     }
 
+    // Aggregate historical usage statistics and financial metrics from rental records
     for (const auto &r : dm.rentals) {
         // A cancelled booking never actually used its bike -- don't let it
         // inflate popularity/usage counts. (Revenue is already naturally
@@ -56,16 +60,19 @@ void showFleetAnalytics(DataManager &dm) {
             typeTimesRented[type]++;
             bikeRentalCount[bikeId]++;
 
+            // Accumulate revenue only for confirmed paid orders
             if (trimStr(r.paymentStatus) == "Paid") {
                 typeRevenue[type] += r.rentingPrice;
             }
         }
     }
 
+    // Render analytics interface header
     cout << getCenteredString(border, 165) << endl;
     cout << getCenteredString("DYNAMIC FLEET USAGE & BIKE POPULARITY ANALYTICS", 165) << endl;
     cout << getCenteredString(border, 165) << endl << endl;
 
+    // Format analytics table column headers
     ostringstream headerSS;
     headerSS << left
              << setw(14) << "Category"
@@ -81,6 +88,7 @@ void showFleetAnalytics(DataManager &dm) {
     int maxRented = -1;
     int minRented = numeric_limits<int>::max();
 
+    // Iterate through categories to calculate utilization percentages and render table rows
     for (const auto &entry : typeTotal) {
         const string &type = entry.first;
         int total = entry.second;
@@ -103,23 +111,26 @@ void showFleetAnalytics(DataManager &dm) {
               << setw(14) << revSS.str();
         cout << getCenteredString(rowSS.str(), 165) << endl;
 
+        // Track most and least popular categories by rental frequency
         if (timesRented > maxRented) { maxRented = timesRented; mostPopular = type; }
         if (timesRented < minRented) { minRented = timesRented; leastPopular = type; }
     }
 
     cout << getCenteredString(lineSingle, 165) << endl << endl;
 
+    // Display popularity summary metrics
     if (!typeTotal.empty()) {
         cout << getCenteredString("Most Popular Category  : " + mostPopular + " (" + to_string(maxRented) + " rental(s))", 165) << endl;
         cout << getCenteredString("Least Popular Category : " + leastPopular + " (" + to_string(minRented) + " rental(s))", 165) << endl << endl;
     }
 
-    // Top individual bikes by usage
+    // Rank individual bicycles by usage count (descending order)
     vector<pair<string, int>> bikeRanking(bikeRentalCount.begin(), bikeRentalCount.end());
     sort(bikeRanking.begin(), bikeRanking.end(), [](const pair<string, int> &a, const pair<string, int> &b) {
         return a.second > b.second;
     });
 
+    // Display top 3 most frequently rented individual bicycles
     cout << getCenteredString("Top Individual Bikes by Usage:", 165) << endl;
     int shown = 0;
     for (const auto &entry : bikeRanking) {
@@ -133,12 +144,14 @@ void showFleetAnalytics(DataManager &dm) {
         cout << getCenteredString("  No rental activity recorded yet.", 165) << endl;
     }
 
+    // Tally and display idle bicycles (never rented)
     int idleCount = 0;
     for (const auto &entry : bikeRentalCount) {
         if (entry.second == 0) idleCount++;
     }
     cout << endl << getCenteredString("Idle Bikes (never rented) : " + to_string(idleCount) + " / " + to_string(dm.bicycles.size()), 165) << endl;
 
+    // Navigation pause before returning to admin menu
     cout << endl << getCenteredString(border, 165) << endl;
     cout << getCenteredString("Press Enter to return to admin menu...", 165);
     string dummy;

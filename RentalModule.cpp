@@ -1,6 +1,5 @@
 #include "RentalModule.h"
 #include "DatabaseEngine.h"
-#include "PaymentModule.h"
 #include "Helpers.h"
 #include "LoyaltyModule.h"
 #include "PenaltyModule.h"
@@ -15,7 +14,6 @@
 
 using namespace std;
 
-// Helper to strip whitespace, tabs, and hidden Windows carriage returns (\r)
 static string trim(const string &s) {
     size_t first = s.find_first_not_of(" \t\r\n");
     if (first == string::npos) return "";
@@ -23,7 +21,6 @@ static string trim(const string &s) {
     return s.substr(first, (last - first + 1));
 }
 
-// Count stock from dm.bicycles directly
 static int getAvailableCount(const DataManager &dm, const string &bikeType) {
     int count = 0;
     for (const auto &b : dm.bicycles) {
@@ -53,14 +50,14 @@ vector<int> rentalMenu(DataManager &dm) {
     while (bikeOpt != 0) {
         clearScreen();
 
-        // Rely directly on dm.bicycles loaded by loadAllDatabases(dm) in main()
+        // Retrieve real-time available stock counts for each bicycle category
         int availRegular   = getAvailableCount(dm, "Regular");
         int availTwoSeater = getAvailableCount(dm, "Two Seater");
         int availEBike     = getAvailableCount(dm, "E-Bike");
         int availKidsBike  = getAvailableCount(dm, "Kids Bike");
         int availCityBike  = getAvailableCount(dm, "City Bike");
 
-        // Deduct bikes selected in current session cart
+        // Deduct bikes already selected in the current session cart to prevent over-booking
         for (int sel : selectedRent) {
             if (sel == 1) availRegular--;
             if (sel == 2) availTwoSeater--;
@@ -72,12 +69,14 @@ vector<int> rentalMenu(DataManager &dm) {
         string border  = "=========================================================";
         string divider = "-----------+--------------+----------+-------------------";
 
+        // Render rental menu table header
         cout << getCenteredString(border, 165) << endl;
         cout << getCenteredString("BICYCLE RENTAL MENU", 165) << endl;
         cout << getCenteredString(border, 165) << endl;
         cout << getCenteredString(" Option |   Category   | Price/hr | Available Stock    ", 170) << endl;
         cout << getCenteredString(divider, 165) << endl;
 
+        // Construct row display strings with dynamic stock status messages
         string row1 = "   1.   | Regular      | $5.00    | " + to_string(availRegular)   + (availRegular   > 0 ? " Available   " : " OUT OF STOCK");
         string row2 = "   2.   | Two Seater   | $10.00   | " + to_string(availTwoSeater) + (availTwoSeater > 0 ? " Available   " : " OUT OF STOCK");
         string row3 = "   3.   | E-Bike       | $12.00   | " + to_string(availEBike)     + (availEBike     > 0 ? " Available   " : " OUT OF STOCK");
@@ -92,12 +91,14 @@ vector<int> rentalMenu(DataManager &dm) {
 
         cout << getCenteredString(border, 165) << endl;
 
+        // Render current cart summary
         string selectedSummary = " Selected so far: " + to_string(selectedRent.size()) + " bike(s)";
         cout << getCenteredString(selectedSummary, 165) << endl;
         cout << getCenteredString(border, 165) << endl << endl;
 
         cout << getCenteredString("Enter option (1-5, or 0 to finish selection): ", 165);
 
+        // Input handling and validation
         if (!(cin >> bikeOpt)) {
             cin.clear();
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
@@ -110,6 +111,7 @@ vector<int> rentalMenu(DataManager &dm) {
 
         if (bikeOpt == 0) break;
 
+        // Validate selection against available stock
         if (bikeOpt >= 1 && bikeOpt <= 5) {
             string chosenCategory = categories[bikeOpt - 1];
             int currentAvail = 0;
@@ -150,6 +152,7 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
 
     clearScreen();
 
+    // Prompt and validate rental duration in hours
     int hours = 0;
     while (true) {
         cout << getCenteredString("=========================================================", 165) << endl;
@@ -173,20 +176,22 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
     vector<string> assignedCategories;
     vector<double> assignedRates;
 
+    // Match selected categories to specific available bicycle instances
     for (int opt : selectedRent) {
         string targetCat = categoryNames[opt];
         
         for (auto &b : dm.bicycles) {
             if (trim(b.bikeType) == targetCat && trim(b.status) == "Available") {
-                b.status = "Rented";
+                b.status = "Rented"; // Update bike status to Rented
                 assignedBikeIds.push_back(b.bikeId);
                 assignedCategories.push_back(b.bikeType);
                 assignedRates.push_back(b.price);
-                break;
+                break; // Assign one bicycle per cart selection entry
             }
         }
     }
 
+    // Persist updated bicycle availability status to database
     saveBicycles(dm.bicycles);
 
     double subtotal = 0.0;
@@ -194,8 +199,7 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
     const double DEPOSIT_PER_BIKE = 15.00;
     int totalBikes = static_cast<int>(assignedBikeIds.size());
 
-    // Loyalty discount is looked up once and applied to every line -- it's
-    // based on the customer's tier at the moment of checkout.
+    // Retrieve customer loyalty program membership details and discount tier
     MembershipInfo memberInfo = getMembershipInfo(dm, currentCustomer);
     time_t nowTs = time(nullptr);
 
@@ -208,6 +212,7 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
     cout << getCenteredString("CART", 165) << endl;
     cout << getCenteredString(border, 165) << endl;
 
+    // Display loyalty discount info header if applicable
     if (memberInfo.isMember && memberInfo.discountPercent > 0.0) {
         ostringstream ssMember;
         ssMember << "[Loyalty] " << memberInfo.tierName << " member -- "
@@ -216,6 +221,7 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
         cout << getCenteredString(ssMember.str(), 165) << endl << endl;
     }
 
+    // Render detailed cart breakdown table header
     ostringstream headerSS;
     headerSS << " " << left << setw(10) << "Rental ID"
              << "| " << setw(7) << "Bike ID"
@@ -228,10 +234,7 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
     cout << getCenteredString(headerSS.str(), 165) << endl;
     cout << getCenteredString(divider, 165) << endl;
 
-    // Each bike gets its OWN Rental record (and therefore its own Rental ID),
-    // instead of grouping every bike from this checkout under a single shared
-    // rental. dm.rentals is updated inside the loop so generateNextRentalId()
-    // sees the previous bike's new record and hands out the next sequential ID.
+    // Create distinct Rental record per assigned bicycle and format row display
     vector<string> newRentalIds;
 
     for (size_t i = 0; i < assignedBikeIds.size(); i++) {
@@ -242,6 +245,7 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
         subtotal += lineTotal;
         totalDiscount += discountAmount;
 
+        // Construct new Rental database record
         Rental newR;
         newR.rentalId = generateNextRentalId(dm);
         newR.rentalDuration = to_string(hours) + " hours";
@@ -258,6 +262,7 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
         dm.rentals.push_back(newR);
         newRentalIds.push_back(newR.rentalId);
 
+        // Format row item for display table
         ostringstream rowSS;
         rowSS << " " << left << setw(10) << newR.rentalId
               << "| " << setw(7) << assignedBikeIds[i]
@@ -271,6 +276,7 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
         cout << getCenteredString(rowSS.str(), 165) << endl;
     }
 
+    // Calculate overall total financial summary
     double totalDeposit = DEPOSIT_PER_BIKE * totalBikes;
     double grandTotal = subtotal + totalDeposit;
 
@@ -292,8 +298,10 @@ void checkOut(DataManager &dm, const Customer &currentCustomer, const vector<int
     cout << getCenteredString(ssGrand.str(), 165) << endl;
     cout << getCenteredString(border, 165) << endl << endl;
 
+    // Persist newly created rental records to file storage
     saveRentals(dm.rentals);
 
+    // Format confirmation message with list of newly assigned rental IDs
     string idsJoined;
     for (size_t i = 0; i < newRentalIds.size(); i++) {
         idsJoined += newRentalIds[i];
@@ -328,6 +336,7 @@ bool topUpRental(DataManager &dm, const string &rentalId, int extraHours) {
         return false;
     }
 
+    // Compute total hourly rate for assigned bicycle(s)
     double totalHourlyRate = 0.0;
     for (const auto &bikeId : record->bikeIdsStr) {
         Bicycle* bike = findBicycleById(dm, bikeId);
@@ -338,22 +347,25 @@ bool topUpRental(DataManager &dm, const string &rentalId, int extraHours) {
 
     double addedCost = extraHours * totalHourlyRate;
 
+    // Extract current duration, add extra hours, and format new duration string
     int currentHours = 0;
     stringstream durSS(record->rentalDuration);
     durSS >> currentHours;
     int newHours = currentHours + extraHours;
 
+    // Update rental record fields
     record->rentalDuration = to_string(newHours) + " hours";
     record->rentingPrice += addedCost;
     record->paymentStatus = "Pending";
-    record->toppedUp = true; // no longer eligible for cancellation once extended
+    record->toppedUp = true; // Flag prevents future cancellation
 
-    saveRentals(dm.rentals);
+    saveRentals(dm.rentals); // Persist updated rental record
 
     stringstream feeSS, costSS;
     feeSS << fixed << setprecision(2) << addedCost;
     costSS << fixed << setprecision(2) << record->rentingPrice;
 
+    // Display top-up confirmation box
     cout << "\n";
     cout << getCenteredString("========================================", 165) << "\n";
     cout << getCenteredString("        TOP-UP SUCCESSFUL!              ", 165) << "\n";
@@ -380,15 +392,14 @@ bool cancelRental(DataManager &dm, const string &rentalId) {
         return false;
     }
 
-    // Cancellation is only for bookings nobody has touched yet: once it's
-    // been paid for, or extended via Top-Up, it has to go through Return
-    // Bike / Payment instead of being voided outright.
+    // Restrict cancellation if payment has already been completed
     if (trim(record->paymentStatus) == "Paid") {
         cout << getCenteredString("[Error] This rental has already been paid for and can no longer be cancelled.", 165) << "\n";
         cout << getCenteredString("Please use Return Bike instead.", 165) << "\n";
         return false;
     }
 
+    // Restrict cancellation if rental duration was extended via top-up
     if (record->toppedUp) {
         cout << getCenteredString("[Error] This rental has already been topped up and can no longer be cancelled.", 165) << "\n";
         return false;
@@ -399,9 +410,7 @@ bool cancelRental(DataManager &dm, const string &rentalId) {
         return false;
     }
 
-    // A rental that's already overdue must go through Return Bike instead --
-    // otherwise a customer could "cancel" a very late rental just to dodge
-    // the tiered late fee it would otherwise be charged.
+    // Check if rental is overdue; overdue rentals must go through Return Bike flow
     int plannedHours = 0;
     {
         stringstream durSS(record->rentalDuration);
@@ -416,9 +425,7 @@ bool cancelRental(DataManager &dm, const string &rentalId) {
         return false;
     }
 
-    // Release every bike tied to this rental back into the available pool --
-    // cancelling a booking must free up stock immediately, exactly like a
-    // real return does.
+    // Return all associated bicycles back to "Available" inventory pool
     for (const string &bikeId : record->bikeIdsStr) {
         Bicycle* bike = findBicycleById(dm, bikeId);
         if (bike) {
@@ -427,6 +434,7 @@ bool cancelRental(DataManager &dm, const string &rentalId) {
     }
     saveBicycles(dm.bicycles);
 
+    // Reset rental record metrics to zero / cancelled
     record->bikeIdsStr.clear();
     record->rentingStatus = "Cancelled";
     record->paymentStatus = "Cancelled";
@@ -434,7 +442,7 @@ bool cancelRental(DataManager &dm, const string &rentalId) {
     record->deposit = 0.0;
     record->amountPaid = 0.0; // nothing was ever paid -- nothing to refund
 
-    saveRentals(dm.rentals);
+    saveRentals(dm.rentals); // Persist updated rental state
 
     cout << "\n";
     cout << getCenteredString("========================================", 165) << "\n";
@@ -456,7 +464,7 @@ void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer) {
     cout << getCenteredString("ACTIVE RENTALS AVAILABLE FOR TOP-UP", 165) << "\n";
     cout << getCenteredString(border, 165) << "\n\n";
 
-    // Gather active rentals for this customer
+    // Filter active rentals matching current customer
     vector<Rental*> activeRentals;
     for (auto &r : dm.rentals) {
         if (trim(r.custId) == trim(currentCustomer.customerId) && trim(r.rentingStatus) == "Active") {
@@ -473,9 +481,7 @@ void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer) {
         return;
     }
 
-    // Display formatted table of active rentals. Each Rental now belongs to
-    // exactly one bike, so this is a single straightforward pass -- no more
-    // nested re-printing of the header/rows for every rental in the list.
+    // Display formatted table of active rentals available for duration extension
     ostringstream headerSS;
     headerSS << " " << left << setw(10) << "Rental ID"
              << "| " << setw(25) << "Assigned Bike"
@@ -506,6 +512,7 @@ void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer) {
     }
     cout << getCenteredString(border, 165) << "\n\n";
 
+    // Prompt user for Rental ID target
     string rentalId;
     cout << getCenteredString("Enter Rental ID to Top-Up (or 0 to cancel): ", 165);
     cin >> rentalId;
@@ -518,6 +525,7 @@ void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer) {
 
     if (trim(rentalId) == "0") return;
 
+    // Validate selected rental ownership and active state
     Rental* record = findRentalById(dm, trim(rentalId));
     if (!record || trim(record->custId) != trim(currentCustomer.customerId) || trim(record->rentingStatus) != "Active") {
         cout << "\n" << getCenteredString("[Error] Invalid or inactive Rental ID selection.", 165) << "\n";
@@ -527,6 +535,7 @@ void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer) {
         return;
     }
 
+    // Prompt and validate input for extra hours
     int extraHours;
     cout << getCenteredString("Enter additional hours to add: ", 165);
     while (!(cin >> extraHours)) {
@@ -536,6 +545,7 @@ void handleTopUpMenu(DataManager &dm, const Customer &currentCustomer) {
         cout << getCenteredString("Invalid input! Enter additional hours to add: ", 165);
     }
 
+    // Process top-up logic
     topUpRental(dm, trim(rentalId), extraHours);
 
     cout << "\n" << getCenteredString("Press Enter to continue...", 165);
@@ -552,9 +562,7 @@ void handleCancelMenu(DataManager &dm, const Customer &currentCustomer) {
     cout << getCenteredString("CANCEL RENTAL", 165) << "\n";
     cout << getCenteredString(border, 165) << "\n\n";
 
-    // Only rentals that are still Active, not yet paid, and never topped up
-    // are eligible -- once money has changed hands or the booking's been
-    // extended, it has to go through Return Bike / Payment instead.
+    // Gather rentals eligible for cancellation
     vector<Rental*> cancellable;
     for (auto &r : dm.rentals) {
         if (trim(r.custId) == trim(currentCustomer.customerId)
@@ -575,6 +583,7 @@ void handleCancelMenu(DataManager &dm, const Customer &currentCustomer) {
         return;
     }
 
+    // Display table of cancellable rentals
     ostringstream headerSS;
     headerSS << " " << left << setw(10) << "Rental ID"
              << "| " << setw(25) << "Assigned Bike"
@@ -600,6 +609,7 @@ void handleCancelMenu(DataManager &dm, const Customer &currentCustomer) {
     }
     cout << getCenteredString(border, 165) << "\n\n";
 
+    // Prompt user for target Rental ID
     string rentalId;
     cout << getCenteredString("Enter Rental ID to Cancel (or 0 to go back): ", 165);
     cin >> rentalId;
@@ -612,6 +622,7 @@ void handleCancelMenu(DataManager &dm, const Customer &currentCustomer) {
 
     if (trim(rentalId) == "0") return;
 
+    // Verify if selected rental is in the cancellable list
     bool eligible = false;
     for (const auto *r : cancellable) {
         if (trim(r->rentalId) == trim(rentalId)) {
@@ -628,6 +639,7 @@ void handleCancelMenu(DataManager &dm, const Customer &currentCustomer) {
         return;
     }
 
+    // Request explicit user confirmation before cancelling
     int confirm = 0;
     cout << "\n" << getCenteredString("Are you sure you want to cancel Rental " + trim(rentalId) + "?", 165) << "\n";
     cout << getCenteredString("1. Yes, cancel it", 165) << "\n";
@@ -645,6 +657,7 @@ void handleCancelMenu(DataManager &dm, const Customer &currentCustomer) {
         cout << getCenteredString("Invalid choice! Enter 1 or 2: ", 165);
     }
 
+    // Execute or abort cancellation based on prompt selection
     if (confirm == 1) {
         cancelRental(dm, trim(rentalId));
     } else {
