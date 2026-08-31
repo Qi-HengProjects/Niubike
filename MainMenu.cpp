@@ -241,12 +241,12 @@ int login(DataManager &dm, Customer &currentCustomer) {
                 dm.customers.push_back(newC);
                 saveCustomers(dm.customers);
 
-                currentCustomer = newC; // Save new customer data into active session!
-
-                cout << "\nSign up successful! Your account has been registered." << endl;
+                cout << "\nSign up successful! Please log in with your new account." << endl;
                 cout << "Press Enter to continue...";
                 cin.get();
-                return 0; // Return success signal
+                
+                // Break back to the outer loop to show the main access menu again
+                break;
             }
 
             // Case 3: Exit System Request
